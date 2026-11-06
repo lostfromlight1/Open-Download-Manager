@@ -30,6 +30,8 @@ function mockApi(partial: Partial<DesktopApi> = {}): DesktopApi {
       browserIntegrationEnabled: false,
       chromeExtensionId: "",
       browserHostRegistered: false,
+      browserHostMessage: "",
+      closeToTray: true,
     }),
     getDownload: async () => {
       throw new Error("not used");

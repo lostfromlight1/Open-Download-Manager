@@ -183,6 +183,7 @@ go run ./cmd/odm settings show
 - Cancel/remove file choice: `--files keep|delete`.
 - Resume mismatch policy for `queue run`: `--on-mismatch abort|restart`.
 - `odm settings set download.max_connections 4`: per-download worker cap for the queue.
+- `odm settings set ui.close_to_tray true|false`: when true (default), closing the desktop window hides to the system tray and keeps downloads running; tray **Quit** exits fully and stops the queue.
 
 ### 5.4 Production desktop binary
 
@@ -248,10 +249,11 @@ go build -o apps/desktop/bin/odm-nmhost ./cmd/odm-nmhost
    - Chrome/Edge: Developer mode → Load unpacked → select that folder (`manifest.json`).
    - Firefox: use `manifest.firefox.json` (copy over `manifest.json` or load via `about:debugging` temporary add-on).
 4. Open the extension popup and click **Refresh status**. Right-click a link → **Download with ODM**.
+5. Optional: enable **Send browser downloads to ODM** in the popup (requests the Downloads permission). Normal browser file downloads are then enqueued into ODM and cancelled in the browser when enqueue succeeds. HTML page bodies and `blob:`/`data:` URLs are skipped. Session cookies are not forwarded.
 
 CLI: `odm settings set browser.integration_enabled true` (still register the host via desktop Save, or call install helpers after building `odm-nmhost`).
 
-Optional click capture is off by default and asks for http(s) page access when enabled.
+Optional click capture is off by default and asks for http(s) page access when enabled. Extension unit tests: `cd apps/browser-extension && npm test` (or `node --test intercept.test.js`).
 
 ---
 
@@ -331,17 +333,19 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 
 - Clone → install → test
 - Desktop app via `wails3 dev` / `wails3 build` (dashboard, settings, live progress, keep/delete and mismatch dialogs)
+- Close-to-tray (default on): hide window to system tray; downloads keep running until tray Quit
 - Unsigned packaging: Windows NSIS, macOS `.app`, Linux `.deb` (CI `desktop-package`)
 - Opt-in browser extension + `odm-nmhost` native messaging (context-menu enqueue)
+- Opt-in browser download interception (extension popup; no cookie forwarding)
 - `odm version` and `odm download` (single-stream + segmented HTTP/HTTPS, resume, retry, proxy modes)
-- `odm task` / `odm queue` / `odm settings` (SQLite queue shared with desktop, concurrency, connections, keep/delete, mismatch policy, proxy persistence)
+- `odm task` / `odm queue` / `odm settings` (SQLite queue shared with desktop, concurrency, connections, keep/delete, mismatch policy, proxy persistence, close-to-tray)
 
 **Not implemented yet (later phases)**
 
 - Interactive TTY prompts (CLI currently uses explicit flags for decisions)
 - Per-segment crash resume wired through the manager (segment rows exist; engine clears failed segmented `.part`s for safety)
 - Signed / notarized releases (v1.0)
-- Downloads continuing after the process exits (Phase 7 background service)
-- Silent browser download interception
+- Separate headless background service / launch-at-login (beyond close-to-tray in the desktop process)
+- Cookie/header-aware authenticated browser intercept
 
 See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for the roadmap.

@@ -207,7 +207,7 @@ export function DownloadsPage({
         </div>
       </header>
 
-      <section className="grid grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 gap-3 min-[900px]:grid-cols-3">
         {[
           { label: "Active", value: counts.active },
           { label: "Queued", value: counts.queued },
@@ -236,7 +236,7 @@ export function DownloadsPage({
             type="button"
             role="tab"
             aria-selected={filter === t.id}
-            className={`rounded-md px-3 py-1.5 text-sm ${
+            className={`rounded-md px-2.5 py-1 text-sm min-[900px]:px-3 min-[900px]:py-1.5 ${
               filter === t.id
                 ? "bg-[var(--color-surface-muted)] font-medium text-[var(--color-text)]"
                 : "text-[var(--color-text-muted)]"

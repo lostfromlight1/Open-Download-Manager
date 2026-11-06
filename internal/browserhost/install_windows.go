@@ -61,20 +61,28 @@ func Install(opts InstallOptions) (InstallResult, error) {
 }
 
 // Uninstall removes host registry entries and the manifest file when present.
-func Uninstall() error {
+func Uninstall() (UninstallResult, error) {
+	wasInstalled := IsInstalled()
+	var removed []string
+
 	keys := []string{
 		`Software\Google\Chrome\NativeMessagingHosts\` + HostName,
 		`Software\Microsoft\Edge\NativeMessagingHosts\` + HostName,
 		`Software\Mozilla\NativeMessagingHosts\` + HostName,
 	}
 	for _, keyPath := range keys {
-		_ = registry.DeleteKey(registry.CURRENT_USER, keyPath)
+		if err := registry.DeleteKey(registry.CURRENT_USER, keyPath); err == nil {
+			removed = append(removed, `HKCU\`+keyPath)
+		}
 	}
 	localAppData := os.Getenv("LOCALAPPDATA")
 	if localAppData != "" {
-		_ = os.Remove(filepath.Join(localAppData, "ODM", "native-messaging", HostName+".json"))
+		manifest := filepath.Join(localAppData, "ODM", "native-messaging", HostName+".json")
+		if err := os.Remove(manifest); err == nil {
+			removed = append(removed, manifest)
+		}
 	}
-	return nil
+	return UninstallResult{RemovedPaths: removed, WasInstalled: wasInstalled || len(removed) > 0}, nil
 }
 
 // IsInstalled reports whether a Chrome or Firefox host registry key exists.

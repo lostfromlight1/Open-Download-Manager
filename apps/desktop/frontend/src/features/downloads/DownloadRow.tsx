@@ -49,14 +49,15 @@ export function DownloadRow({
     isActiveStatus(d.status) || d.status === "queued" || d.status === "paused";
 
   return (
-    <article className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+    <article className="min-w-0 overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1 basis-[12rem]">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <button
               type="button"
-              className="truncate text-left text-sm font-semibold text-[var(--color-text)] hover:underline"
+              className="max-w-full truncate text-left text-sm font-semibold text-[var(--color-text)] hover:underline"
               onClick={() => onDetails(d.id)}
+              title={d.fileName}
             >
               {d.fileName}
             </button>
@@ -66,7 +67,7 @@ export function DownloadRow({
             {hostnameFromUrl(d.url)}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex max-w-full flex-wrap gap-2">
           <button
             type="button"
             className="rounded-md border border-[var(--color-border)] px-2.5 py-1 text-xs disabled:opacity-50"

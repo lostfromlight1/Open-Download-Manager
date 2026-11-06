@@ -28,7 +28,8 @@ Application orchestration layer
         +---- Platform adapters (notifications, paths)
 
 CLI (`odm`) -------------------------> same engine / manager packages
-Future background service -----------> same engine / manager packages
+Desktop tray (hide window) ----------> same process / RunQueue (Phase 7)
+Future headless service (deferred) --> same engine / manager packages
 
 Browser extension ---> Native Messaging host ---> enqueue API
 ```

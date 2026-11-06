@@ -18,7 +18,7 @@ export function Dialog({ title, children, onClose, footer }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="odm-dialog-title"
-        className="w-full max-w-md rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg"
+        className="flex max-h-[min(90vh,40rem)] w-full max-w-md flex-col overflow-y-auto rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <h2
@@ -29,7 +29,7 @@ export function Dialog({ title, children, onClose, footer }: Props) {
         </h2>
         <div className="mt-3 text-sm text-[var(--color-text)]">{children}</div>
         {footer ? (
-          <div className="mt-5 flex justify-end gap-2">{footer}</div>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">{footer}</div>
         ) : null}
       </div>
     </div>

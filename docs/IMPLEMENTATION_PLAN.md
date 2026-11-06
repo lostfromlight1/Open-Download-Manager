@@ -134,11 +134,54 @@ Build vertically: each milestone should produce something executable and testabl
 - Enqueue rejected when integration is disabled
 - Context-menu send creates a queued task when enabled + download directory set
 - Protocol/settings tests cover reject and happy paths
-- No history/page/cookie collection; download interception remains later
+- No history/page/cookie collection; download interception delivered in Phase 8
 
-## Phase 7 — Background service
+## Phase 7 — Close-to-tray background
 
-Reuse the same engine so downloads continue with the UI closed.
+**Status:** implemented (same-process tray hide; separate daemon / autostart deferred).
+
+Keep downloads alive in the **same** desktop process when the window is hidden (not a separate `odm-service` daemon).
+
+**Deliverables**
+
+- Setting `ui.close_to_tray` (default true) via storage, Settings UI, and `odm settings`
+- Wails system tray with **Show Open Download Manager** and **Quit**
+- `WindowClosing`: hide + cancel quit when enabled; real exit via tray Quit (or close when setting is off)
+- Show the window when a resume-mismatch decision is required while hidden
+- Docs + unit tests for setting round-trip and hide-on-close logic
+
+**Deferred**
+
+- Separate headless background service binary
+- Launch-at-login / OS autostart
+- Deep Linux DE tray quirks beyond basic Wails support
+
+**Exit criteria**
+
+- Close-to-tray on: close hides to tray; active downloads continue via `RunQueue`; Show restores UI; Quit exits and stops the queue
+- Close-to-tray off: close quits the app as before
+- Setting persisted and controllable from Settings + CLI
+- No second download engine
+
+## Phase 8 — Browser download interception + desktop UI polish
+
+**Status:** implemented (opt-in extension intercept; desktop window fluid layout).
+
+**Deliverables**
+
+- Extension popup toggle **Send browser downloads to ODM** (default off); optional `"downloads"` permission
+- `chrome.downloads.onCreated`: filter http(s), skip HTML/XHTML MIME; enqueue via existing NM; cancel+erase on success
+- Pure `shouldInterceptDownload` helper with Node tests
+- Desktop UI: MinWidth/MinHeight, fluid stats/rows/dialogs/settings for ~800px+ windows
+- Docs: SECURITY/FEATURES/TESTING/SETUP note that session cookies are not forwarded
+
+**Exit criteria**
+
+- With intercept off, browser downloads behave normally
+- With intercept on + ODM integration enabled: normal file download appears in ODM and browser item is cancelled
+- HTML-like MIME downloads are not stolen from the browser
+- Enqueue failure leaves the browser download alone
+- Desktop UI usable from min window size to default 1040×720
 
 ## Phase N — Network Access / Tunneling track
 

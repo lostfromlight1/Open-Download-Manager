@@ -50,6 +50,7 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	cfg.MaxActiveDownloads = 3
 	cfg.BrowserIntegrationEnabled = true
 	cfg.ChromeExtensionID = "abcdefghijklmnopqrstuvwxyzabcdef"
+	cfg.CloseToTray = false
 	if err := store.SaveSettings(ctx, cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -62,6 +63,9 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	}
 	if !loaded.BrowserIntegrationEnabled || loaded.ChromeExtensionID != cfg.ChromeExtensionID {
 		t.Fatalf("browser settings mismatch: %#v", loaded)
+	}
+	if loaded.CloseToTray {
+		t.Fatalf("close_to_tray want false: %#v", loaded)
 	}
 
 	segs := []storage.Segment{

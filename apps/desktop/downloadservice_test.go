@@ -146,6 +146,13 @@ func TestDownloadServiceCancelKeep(t *testing.T) {
 func TestInteractiveDecisionResolve(t *testing.T) {
 	sink := &recordSink{}
 	d := NewInteractiveDecisions(sink)
+	needUI := make(chan struct{}, 1)
+	d.SetNeedUI(func() {
+		select {
+		case needUI <- struct{}{}:
+		default:
+		}
+	})
 
 	done := make(chan manager.MismatchAction, 1)
 	go func() {
@@ -163,6 +170,11 @@ func TestInteractiveDecisionResolve(t *testing.T) {
 	}
 	if sink.count(EventDecisionRequired) != 1 {
 		t.Fatal("expected decision-required event")
+	}
+	select {
+	case <-needUI:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected NeedUI callback for resume-mismatch decision")
 	}
 
 	sink.mu.Lock()

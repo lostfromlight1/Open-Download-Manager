@@ -24,7 +24,7 @@ ODM is a desktop download manager with a reusable **Go** download engine, a **Re
 
 ## Current project status
 
-Phase 6 browser integration: opt-in Chrome/Firefox WebExtension + `odm-nmhost` native messaging (context-menu send to the shared queue). Phase 5 packaging (NSIS / `.app` / `.deb` + CI artifacts) and Phase 4 desktop MVP remain. Download interception, background service, and code signing are later.
+Phase 8: opt-in extension **Send browser downloads to ODM** (cancels the browser item after enqueue) plus desktop UI fluid layout from ~800px. Phase 7 close-to-tray and Phase 6 native messaging remain. Cookie-aware intercept, a separate background daemon, launch-at-login, and code signing are later.
 
 License: MIT.
 

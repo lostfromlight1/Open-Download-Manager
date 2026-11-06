@@ -58,6 +58,8 @@ export interface SettingsDTO {
   browserIntegrationEnabled: boolean;
   chromeExtensionId: string;
   browserHostRegistered: boolean;
+  browserHostMessage: string;
+  closeToTray: boolean;
 }
 
 export type FilterTab =

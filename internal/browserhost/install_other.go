@@ -9,6 +9,23 @@ import (
 	"runtime"
 )
 
+func hostManifestTargets(home string) []string {
+	switch runtime.GOOS {
+	case "darwin":
+		return []string{
+			filepath.Join(home, "Library/Application Support/Google/Chrome/NativeMessagingHosts", HostName+".json"),
+			filepath.Join(home, "Library/Application Support/Chromium/NativeMessagingHosts", HostName+".json"),
+			filepath.Join(home, "Library/Application Support/Mozilla/NativeMessagingHosts", HostName+".json"),
+		}
+	default:
+		return []string{
+			filepath.Join(home, ".config/google-chrome/NativeMessagingHosts", HostName+".json"),
+			filepath.Join(home, ".config/chromium/NativeMessagingHosts", HostName+".json"),
+			filepath.Join(home, ".mozilla/native-messaging-hosts", HostName+".json"),
+		}
+	}
+}
+
 // Install registers native messaging host manifests for Chrome and Firefox.
 func Install(opts InstallOptions) (InstallResult, error) {
 	hostPath := opts.HostBinaryPath
@@ -29,22 +46,7 @@ func Install(opts InstallOptions) (InstallResult, error) {
 		return InstallResult{}, err
 	}
 
-	var targets []string
-	switch runtime.GOOS {
-	case "darwin":
-		targets = []string{
-			filepath.Join(home, "Library/Application Support/Google/Chrome/NativeMessagingHosts", HostName+".json"),
-			filepath.Join(home, "Library/Application Support/Chromium/NativeMessagingHosts", HostName+".json"),
-			filepath.Join(home, "Library/Application Support/Mozilla/NativeMessagingHosts", HostName+".json"),
-		}
-	default: // linux and others
-		targets = []string{
-			filepath.Join(home, ".config/google-chrome/NativeMessagingHosts", HostName+".json"),
-			filepath.Join(home, ".config/chromium/NativeMessagingHosts", HostName+".json"),
-			filepath.Join(home, ".mozilla/native-messaging-hosts", HostName+".json"),
-		}
-	}
-
+	targets := hostManifestTargets(home)
 	written := make([]string, 0, len(targets))
 	for _, path := range targets {
 		if err := WriteManifestFile(path, m); err != nil {
@@ -57,30 +59,19 @@ func Install(opts InstallOptions) (InstallResult, error) {
 }
 
 // Uninstall removes host manifests for Chrome and Firefox.
-func Uninstall() error {
+func Uninstall() (UninstallResult, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return err
+		return UninstallResult{}, err
 	}
-	var targets []string
-	switch runtime.GOOS {
-	case "darwin":
-		targets = []string{
-			filepath.Join(home, "Library/Application Support/Google/Chrome/NativeMessagingHosts", HostName+".json"),
-			filepath.Join(home, "Library/Application Support/Chromium/NativeMessagingHosts", HostName+".json"),
-			filepath.Join(home, "Library/Application Support/Mozilla/NativeMessagingHosts", HostName+".json"),
-		}
-	default:
-		targets = []string{
-			filepath.Join(home, ".config/google-chrome/NativeMessagingHosts", HostName+".json"),
-			filepath.Join(home, ".config/chromium/NativeMessagingHosts", HostName+".json"),
-			filepath.Join(home, ".mozilla/native-messaging-hosts", HostName+".json"),
+	wasInstalled := IsInstalled()
+	var removed []string
+	for _, path := range hostManifestTargets(home) {
+		if err := os.Remove(path); err == nil {
+			removed = append(removed, path)
 		}
 	}
-	for _, path := range targets {
-		_ = os.Remove(path)
-	}
-	return nil
+	return UninstallResult{RemovedPaths: removed, WasInstalled: wasInstalled || len(removed) > 0}, nil
 }
 
 // IsInstalled reports whether any host manifest file exists.
@@ -89,13 +80,7 @@ func IsInstalled() bool {
 	if err != nil {
 		return false
 	}
-	candidates := []string{
-		filepath.Join(home, "Library/Application Support/Google/Chrome/NativeMessagingHosts", HostName+".json"),
-		filepath.Join(home, ".config/google-chrome/NativeMessagingHosts", HostName+".json"),
-		filepath.Join(home, ".mozilla/native-messaging-hosts", HostName+".json"),
-		filepath.Join(home, "Library/Application Support/Mozilla/NativeMessagingHosts", HostName+".json"),
-	}
-	for _, path := range candidates {
+	for _, path := range hostManifestTargets(home) {
 		if st, err := os.Stat(path); err == nil && !st.IsDir() {
 			return true
 		}

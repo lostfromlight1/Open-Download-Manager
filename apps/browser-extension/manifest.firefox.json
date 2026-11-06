@@ -4,9 +4,10 @@
   "version": "0.4.0",
   "description": "Send download links to Open Download Manager (opt-in native messaging).",
   "permissions": ["contextMenus", "nativeMessaging", "storage", "scripting"],
+  "optional_permissions": ["downloads"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["intercept.js", "background.js"]
   },
   "action": {
     "default_title": "ODM",

@@ -30,14 +30,36 @@ export function SettingsPage({ onBack, onSaved }: Props) {
     setBusy(true);
     setError(null);
     setSavedMsg(null);
+    const enabling = form.browserIntegrationEnabled;
+    const wasEnabled = form.browserHostRegistered || false;
     try {
       const api = await getDesktopApi();
       const saved = await api.updateSettings(form);
-      setForm(saved);
+      setForm({ ...saved, browserHostMessage: saved.browserHostMessage || "" });
       onSaved(saved);
-      setSavedMsg("Settings saved.");
+      if (saved.browserHostMessage?.trim()) {
+        setSavedMsg(saved.browserHostMessage.trim());
+      } else if (enabling) {
+        setSavedMsg(
+          "Settings saved. Browser host should now be registered for this user.",
+        );
+      } else if (wasEnabled && !enabling) {
+        setSavedMsg("Settings saved. Browser host uninstalled for this user.");
+      } else {
+        setSavedMsg("Settings saved.");
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
+      // Settings may still have been persisted; refresh so host status is accurate.
+      try {
+        const api = await getDesktopApi();
+        const latest = await api.getSettings();
+        setForm(latest);
+        onSaved(latest);
+      } catch {
+        // keep the primary error
+      }
     } finally {
       setBusy(false);
     }
@@ -101,9 +123,9 @@ export function SettingsPage({ onBack, onSaved }: Props) {
             <legend className="text-sm font-semibold">Downloads</legend>
             <label className="block text-sm">
               Default download location
-              <div className="mt-1 flex gap-2">
+              <div className="mt-1 flex flex-col gap-2 min-[700px]:flex-row">
                 <input
-                  className="w-full rounded-md border border-[var(--color-border)] px-3 py-2 font-mono text-sm"
+                  className="min-w-0 w-full rounded-md border border-[var(--color-border)] px-3 py-2 font-mono text-sm"
                   value={form.downloadDirectory}
                   onChange={(e) =>
                     setForm({ ...form, downloadDirectory: e.target.value })
@@ -181,6 +203,20 @@ export function SettingsPage({ onBack, onSaved }: Props) {
               />
               Notify when a download completes (opt-in)
             </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.closeToTray}
+                onChange={(e) =>
+                  setForm({ ...form, closeToTray: e.target.checked })
+                }
+              />
+              Keep downloading in the system tray when I close the window
+            </label>
+            <p className="text-sm text-[var(--color-text-muted)]">
+              When enabled, closing the window hides ODM to the tray; downloads
+              keep running. Use Quit in the tray menu to exit fully.
+            </p>
           </fieldset>
 
           <fieldset className="space-y-3">
@@ -190,7 +226,10 @@ export function SettingsPage({ onBack, onSaved }: Props) {
             <p className="text-sm text-[var(--color-text-muted)]">
               Opt-in only. The extension may send http(s) download links to ODM
               via native messaging. It does not read browsing history or page
-              content. A default download folder is required when enabled.
+              content. A default download folder is required when enabled. To
+              replace the browser&apos;s own downloads with ODM, use{" "}
+              <strong className="font-medium">Send browser downloads to ODM</strong>{" "}
+              in the extension popup (not here).
             </p>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -206,7 +245,7 @@ export function SettingsPage({ onBack, onSaved }: Props) {
               Enable browser integration
             </label>
             <label className="block text-sm">
-              Chrome extension ID (from chrome://extensions)
+              Chrome / Edge extension ID (from chrome://extensions)
               <input
                 className="mt-1 w-full rounded-md border border-[var(--color-border)] px-3 py-2 font-mono text-sm"
                 value={form.chromeExtensionId}
@@ -217,16 +256,37 @@ export function SettingsPage({ onBack, onSaved }: Props) {
                 disabled={!form.browserIntegrationEnabled}
               />
             </label>
-            {form.browserHostRegistered ? (
-              <p className="text-sm text-[var(--color-success)]">
-                Native messaging host is registered for this user.
-              </p>
-            ) : form.browserIntegrationEnabled ? (
+            {form.browserIntegrationEnabled &&
+            !form.chromeExtensionId.trim() ? (
               <p className="text-sm text-[var(--color-text-muted)]">
-                Host registration runs when you save with integration enabled
-                and odm-nmhost on PATH (or next to the desktop app).
+                Firefox works without this ID. Chrome/Edge need the ID so the
+                host can allow your unpacked extension.
               </p>
             ) : null}
+            {form.browserHostRegistered ? (
+              <p className="text-sm text-[var(--color-success)]" role="status">
+                Status: browser host is installed for this user. Saving with
+                integration enabled reinstalls/updates the host; turning it off
+                and saving uninstalls the host.
+              </p>
+            ) : form.browserIntegrationEnabled ? (
+              <p
+                className="text-sm text-[var(--color-text-muted)]"
+                role="status"
+              >
+                Status: host not registered yet. Build{" "}
+                <code className="font-mono text-xs">odm-nmhost</code> next to
+                the app (or on PATH), then Save to install it.
+              </p>
+            ) : (
+              <p
+                className="text-sm text-[var(--color-text-muted)]"
+                role="status"
+              >
+                Status: browser host is not installed. Enable integration and
+                Save to install; disable and Save to uninstall.
+              </p>
+            )}
           </fieldset>
 
           <fieldset className="space-y-3">
@@ -274,7 +334,12 @@ export function SettingsPage({ onBack, onSaved }: Props) {
               {busy ? "Saving…" : "Save Settings"}
             </button>
             {savedMsg ? (
-              <p className="text-sm text-[var(--color-success)]">{savedMsg}</p>
+              <p
+                className="max-w-xl text-sm text-[var(--color-success)]"
+                role="status"
+              >
+                {savedMsg}
+              </p>
             ) : null}
           </div>
         </form>

@@ -25,6 +25,7 @@ type DownloadService struct {
 	store         *storage.Store
 	decisions     *InteractiveDecisions
 	sink          EventSink
+	tray          *trayController
 	dataDir       string
 	ready         bool
 	initErr       string
@@ -36,6 +37,12 @@ type DownloadService struct {
 // NewDownloadService constructs an unready service (tests / late bind).
 func NewDownloadService() *DownloadService {
 	return &DownloadService{}
+}
+
+func (s *DownloadService) setTrayController(tray *trayController) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tray = tray
 }
 
 // bind wires the opened manager/store and starts listening for task updates.
@@ -236,20 +243,41 @@ func (s *DownloadService) UpdateSettings(dto SettingsDTO) (SettingsDTO, error) {
 	if err := s.mgr.SaveSettings(context.Background(), cfg); err != nil {
 		return SettingsDTO{}, err
 	}
-	if cfg.BrowserIntegrationEnabled {
-		if _, err := browserhost.Install(browserhost.InstallOptions{
-			ChromeExtensionID: cfg.ChromeExtensionID,
-		}); err != nil {
-			// Persist succeeded; surface registration failure to the UI.
-			out := settingsToDTO(cfg)
-			out.BrowserHostRegistered = false
-			return out, fmt.Errorf("settings saved, but native host registration failed: %w", err)
-		}
-	} else if existing.BrowserIntegrationEnabled {
-		_ = browserhost.Uninstall()
-	}
+
 	out := settingsToDTO(cfg)
-	out.BrowserHostRegistered = browserhost.IsInstalled()
+	wasEnabled := existing.BrowserIntegrationEnabled
+	switch {
+	case cfg.BrowserIntegrationEnabled:
+		result, err := browserhost.Install(browserhost.InstallOptions{
+			ChromeExtensionID: cfg.ChromeExtensionID,
+		})
+		if err != nil {
+			out.BrowserHostRegistered = false
+			out.BrowserHostMessage = browserhost.FormatInstallError(err)
+			return out, fmt.Errorf("%s", out.BrowserHostMessage)
+		}
+		out.BrowserHostRegistered = true
+		out.BrowserHostMessage = browserhost.FormatInstallMessage(result, cfg.ChromeExtensionID)
+	case wasEnabled:
+		result, err := browserhost.Uninstall()
+		if err != nil {
+			out.BrowserHostRegistered = browserhost.IsInstalled()
+			out.BrowserHostMessage = "Settings saved, but removing the browser host failed: " + err.Error()
+			return out, fmt.Errorf("%s", out.BrowserHostMessage)
+		}
+		out.BrowserHostRegistered = false
+		out.BrowserHostMessage = browserhost.FormatUninstallMessage(result)
+	default:
+		out.BrowserHostRegistered = browserhost.IsInstalled()
+		out.BrowserHostMessage = ""
+	}
+
+	s.mu.Lock()
+	tray := s.tray
+	s.mu.Unlock()
+	if tray != nil {
+		tray.SetCloseToTray(cfg.CloseToTray)
+	}
 	return out, nil
 }
 

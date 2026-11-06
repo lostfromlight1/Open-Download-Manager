@@ -2,8 +2,9 @@
   "name": "@open-download-manager/browser-extension",
   "private": true,
   "version": "0.4.0",
-  "description": "ODM WebExtension (Chrome/Firefox) — native messaging client only",
+  "description": "ODM WebExtension (Chrome/Firefox) — native messaging + optional download interception",
   "scripts": {
+    "test": "node --test intercept.test.js",
     "pack:chrome": "node -e \"console.log('Load unpacked from apps/browser-extension (manifest.json)')\"",
     "pack:firefox": "node -e \"console.log('Copy manifest.firefox.json over manifest.json for Firefox temporary add-on')\""
   }

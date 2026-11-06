@@ -10,12 +10,18 @@
       <h1>Open Download Manager</h1>
       <p id="status" class="muted">Checking host…</p>
       <label class="row">
+        <input type="checkbox" id="interceptDownloads" />
+        Send browser downloads to ODM
+      </label>
+      <label class="row">
         <input type="checkbox" id="captureClicks" />
         Capture http(s) link clicks (optional)
       </label>
       <p class="hint">
-        Enable browser integration in the ODM desktop Settings, set a download
-        folder, and paste your Chrome extension ID when using Chrome/Edge.
+        Enable browser integration in the ODM desktop Settings and set a
+        download folder. Download takeover skips HTML page bodies and does not
+        forward cookies — signed-in downloads may fail in ODM. Chrome/Edge need
+        your extension ID pasted in Settings.
       </p>
       <p id="lastError" class="error" hidden></p>
       <button type="button" id="refresh">Refresh status</button>

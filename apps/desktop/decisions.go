@@ -13,7 +13,8 @@ import (
 //
 // Cancel/Remove from the UI pass explicit FileAction and do not use this path.
 type InteractiveDecisions struct {
-	sink EventSink
+	sink   EventSink
+	needUI func()
 
 	mu      sync.Mutex
 	pending map[string]chan manager.MismatchAction // decisionID → response
@@ -37,6 +38,14 @@ func (d *InteractiveDecisions) OnRemoveFiles(string) (manager.FileAction, error)
 	return manager.FileKeep, nil
 }
 
+// SetNeedUI registers a callback invoked when a decision requires the UI
+// (e.g. show the window if it was hidden to the tray).
+func (d *InteractiveDecisions) SetNeedUI(fn func()) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.needUI = fn
+}
+
 // OnResumeMismatch emits a decision-required event and waits for ResolveDecision.
 func (d *InteractiveDecisions) OnResumeMismatch(ctx context.Context, info manager.ValidatorMismatch) (manager.MismatchAction, error) {
 	id := task.NewID()
@@ -44,6 +53,7 @@ func (d *InteractiveDecisions) OnResumeMismatch(ctx context.Context, info manage
 
 	d.mu.Lock()
 	d.pending[id] = ch
+	needUI := d.needUI
 	d.mu.Unlock()
 
 	defer func() {
@@ -51,6 +61,10 @@ func (d *InteractiveDecisions) OnResumeMismatch(ctx context.Context, info manage
 		delete(d.pending, id)
 		d.mu.Unlock()
 	}()
+
+	if needUI != nil {
+		needUI()
+	}
 
 	if d.sink != nil {
 		d.sink.Emit(EventDecisionRequired, DecisionRequiredDTO{

@@ -54,6 +54,8 @@ Required server behaviors:
 - Phase 4: `apps/desktop` tests cover DownloadService list/add/settings/cancel and interactive mismatch decisions; frontend tests cover empty dashboard, boot errors, progress reducer, and format helpers.
 - Phase 5: `apps/desktop` openpath planner tests cover open/reveal command args (Windows/macOS/Linux) and missing-file parent fallback without launching a GUI.
 - Phase 6: `internal/browserhost` covers NM framing, schema rejection, disabled/no-directory enqueue, and happy-path enqueue into a temp SQLite store.
+- Phase 7: `internal/storage` round-trips `ui.close_to_tray`; `apps/desktop` covers `ShouldHideOnClose` and resume-mismatch `NeedUI` (show window when a decision is required).
+- Phase 8: `apps/browser-extension` `node --test intercept.test.js` covers http(s) accept, HTML/blob skip; desktop UI remains covered by existing frontend tests.
 
 ## Quality gates
 
@@ -88,10 +90,39 @@ Before merging:
 
 1. Build host: `go build -o apps/desktop/bin/odm-nmhost.exe ./cmd/odm-nmhost` (or `odm-nmhost` on Unix) and ensure it sits next to the desktop binary or on `PATH`.
 2. In ODM Settings: set download folder, enable browser integration, paste Chrome extension ID (from `chrome://extensions` with Developer mode), Save.
-3. Load unpacked extension from `apps/browser-extension` (Firefox: use `manifest.firefox.json` as `manifest.json`).
-4. Extension popup → Refresh status → expect “Connected” when enabled.
-5. Right-click a link → Download with ODM → task appears in the desktop list within ~1s.
-6. Disable integration in Settings → enqueue should fail with a clear extension error.
+3. Confirm the green status text reports **browser host installed** (or a clear error if `odm-nmhost` is missing).
+4. Load unpacked extension from `apps/browser-extension` (Firefox: use `manifest.firefox.json` as `manifest.json`).
+5. Extension popup → Refresh status → expect “Connected” when enabled.
+6. Right-click a link → Download with ODM → task appears in the desktop list within ~1s.
+7. Disable integration in Settings → Save → confirm **browser host uninstalled** message; enqueue should fail in the extension.
+
+## Phase 7 close-to-tray smoke (manual)
+
+1. Confirm Settings → **Keep downloading in the system tray when I close the window** is checked (default).
+2. Start a sizable download; confirm progress updates.
+3. Close the main window (X). App should remain in the system tray; download progress should continue (re-open and check bytes/speed).
+4. Tray → **Show Open Download Manager** → window restores with live state.
+5. Optional: pause a ranged download, change the remote file / validators if you have a fixture, resume while hidden — window should appear for the mismatch dialog.
+6. Tray → **Quit** → process exits; queue stops (no further writes).
+7. Disable close-to-tray in Settings → Save → close the window → app should exit fully (no lingering tray icon).
+8. CLI: `odm settings show` lists `ui.close_to_tray`; `odm settings set ui.close_to_tray false` persists.
+
+## Phase 8 interception + UI smoke (manual)
+
+### Download interception
+
+1. Complete Phase 6 setup (host installed, integration enabled, extension loaded).
+2. Extension popup → enable **Send browser downloads to ODM** → allow the Downloads permission when prompted.
+3. In Chrome, start a normal http(s) file download (e.g. a zip from a public URL).
+4. Expect: browser download cancelled/removed; task appears in ODM and downloads there.
+5. Disable the popup toggle → normal browser downloads work again.
+6. With toggle on, confirm opening ordinary web pages still works (HTML MIME is not intercepted).
+7. Optional: with ODM integration disabled, intercept should leave the browser download running after enqueue failure.
+
+### Desktop layout
+
+1. Resize the window near the minimum (~800×560) and at the default (~1040×720).
+2. Confirm stats, filter tabs, download rows, Settings path+Browse, and dialogs remain usable without horizontal clipping.
 
 ## Reliability tests
 

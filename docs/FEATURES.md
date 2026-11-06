@@ -39,13 +39,15 @@ Feature labels:
 - Theme preference (light/dark/system).
 - Clear empty, loading, and error states.
 - Native notifications for completion (opt-in).
+- Close-to-tray: hide the window to the system tray (default on); downloads keep running until tray Quit.
+- Desktop window layout usable from ~800px wide to wide screens (no phone layout).
 
 ### Later
 - Search and filters.
 - Download categories and tags.
 - Per-download settings.
 - Speed graph and history.
-- Tray/menu-bar integration.
+- Richer tray/menu-bar status (speed, per-task actions).
 - Global hotkey.
 - Automatic clipboard URL detection (opt-in).
 - Drag-and-drop URL support.
@@ -60,8 +62,15 @@ Feature labels:
 - Connection status and troubleshooting screen.
 - Explicit permission disclosure.
 
+### Download interception (opt-in)
+- Extension popup: **Send browser downloads to ODM** (off by default; requests `downloads` permission).
+- On browser download start: enqueue http(s) URL (+ suggested filename) into ODM, then cancel/erase the browser item when enqueue succeeds.
+- Skip `blob:`/`data:` and likely HTML page bodies (`text/html`, `application/xhtml`).
+- Does not forward cookies or auth headers; signed-in downloads may fail in ODM.
+- Requires desktop `browser.integration_enabled` + default download folder (same as enqueue).
+
 ### Later
-- Intercept browser downloads with explicit user opt-in.
+- Cookie/header-aware authenticated intercept.
 - Send multiple selected links.
 - Detect supported media links only when permitted and technically lawful.
 

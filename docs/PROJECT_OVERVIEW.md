@@ -57,7 +57,9 @@ Platform support is a release commitment: do not advertise a platform as support
 - v0.3: segmented downloads with safe fallback (engine + CLI; desktop UI later).
 - v0.4: Wails desktop application with queue and settings.
 - v0.5: browser extension and native messaging host.
-- Later: background service; optional Network Access / Tunneling track.
+- Phase 7: close-to-tray keeps downloads alive when the window is hidden (same process).
+- Phase 8: opt-in browser download interception + desktop UI fluid layout (~800px+).
+- Later: cookie-aware intercept; optional separate background service / autostart; Network Access / Tunneling track.
 - v1.0: signed/reproducible release process, platform QA, documentation, and security review.
 
 Version numbers are planning labels, not promises.

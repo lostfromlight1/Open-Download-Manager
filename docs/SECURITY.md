@@ -30,6 +30,8 @@ The application downloads untrusted remote content and accepts URLs and commands
 - Authenticate/validate the calling browser where the platform mechanism permits (Chrome `allowed_origins`, Firefox `allowed_extensions`).
 - Require explicit user configuration (`browser.integration_enabled`, default off) and provide a disable switch that unregisters the host.
 - Keep permissions minimal; optional click-capture requests host permissions only when enabled.
+- Optional download interception requests the browser `downloads` permission only when the user enables **Send browser downloads to ODM** in the extension popup (default off).
+- Interception cancels the browser download only after a successful enqueue; it does not collect browsing history, cookies, or page content, and does not forward session cookies to ODM.
 - Host enqueues only; it does not run a second download scheduler.
 
 ### Persistence and secrets

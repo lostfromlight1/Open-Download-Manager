@@ -1,0 +1,70 @@
+const { describe, it } = require("node:test");
+const assert = require("node:assert/strict");
+const {
+  shouldInterceptDownload,
+  downloadBasename,
+} = require("./intercept.js");
+
+describe("shouldInterceptDownload", () => {
+  it("accepts https file downloads", () => {
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://example.com/file.zip",
+        mime: "application/zip",
+      }),
+      true,
+    );
+  });
+
+  it("accepts http when mime is empty", () => {
+    assert.equal(
+      shouldInterceptDownload({ url: "http://cdn.example.com/a.bin" }),
+      true,
+    );
+  });
+
+  it("skips text/html", () => {
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://example.com/page",
+        mime: "text/html; charset=utf-8",
+      }),
+      false,
+    );
+  });
+
+  it("skips application/xhtml", () => {
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://example.com/doc",
+        mime: "application/xhtml+xml",
+      }),
+      false,
+    );
+  });
+
+  it("skips blob and data URLs", () => {
+    assert.equal(
+      shouldInterceptDownload({ url: "blob:https://example.com/uuid" }),
+      false,
+    );
+    assert.equal(
+      shouldInterceptDownload({ url: "data:application/octet-stream;base64,AA" }),
+      false,
+    );
+  });
+
+  it("rejects missing or invalid urls", () => {
+    assert.equal(shouldInterceptDownload(null), false);
+    assert.equal(shouldInterceptDownload({ url: "not a url" }), false);
+  });
+});
+
+describe("downloadBasename", () => {
+  it("returns the final path segment", () => {
+    assert.equal(downloadBasename("C:\\Users\\a\\file.zip"), "file.zip");
+    assert.equal(downloadBasename("/tmp/dir/file.bin"), "file.bin");
+    assert.equal(downloadBasename("file.iso"), "file.iso");
+    assert.equal(downloadBasename(""), "");
+  });
+});

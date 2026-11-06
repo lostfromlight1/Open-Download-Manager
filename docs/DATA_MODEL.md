@@ -44,6 +44,8 @@ Constraints:
 - `max_retries`
 - `bandwidth_limit_bytes_per_second` (nullable)
 - `theme`
+- `ui.notify_on_complete` (opt-in completion notification; default false)
+- `ui.close_to_tray` (hide to tray on window close; default true — tray Quit stops downloads)
 - `browser.integration_enabled` (opt-in native messaging; default false)
 - `browser.chrome_extension_id` (Chrome/Edge host `allowed_origins`)
 
