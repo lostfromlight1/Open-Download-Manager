@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -23,6 +24,17 @@ type AddOptions struct {
 	URL         string
 	Destination string // final file path (required for Phase 2 CLI)
 	DisplayName string // optional; derived from destination when empty
+
+	// Cookie / Referer are ephemeral request headers (browser handoff).
+	// They are kept in memory only for this process — never written to SQLite.
+	Cookie  string
+	Referer string
+}
+
+// ephemeralAuth is per-task Cookie/Referer held only until a terminal state.
+type ephemeralAuth struct {
+	Cookie  string
+	Referer string
 }
 
 // Listener receives optional UI-facing updates (desktop). CLI leaves it nil.
@@ -40,6 +52,7 @@ type Manager struct {
 
 	mu       sync.Mutex
 	running  map[string]context.CancelFunc // taskID → cancel for in-flight work
+	auth     map[string]ephemeralAuth      // taskID → Cookie/Referer (memory only)
 	active   int                           // count of workers holding a slot
 	wake     chan struct{}                 // signal scheduler to look for work
 	closed   bool
@@ -55,6 +68,7 @@ func New(store *storage.Store, decisions DecisionHandler) *Manager {
 		store:     store,
 		decisions: decisions,
 		running:   make(map[string]context.CancelFunc),
+		auth:      make(map[string]ephemeralAuth),
 		wake:      make(chan struct{}, 1),
 	}
 }
@@ -117,9 +131,37 @@ func (m *Manager) Add(ctx context.Context, opts AddOptions) (task.Task, error) {
 	if err := m.store.InsertTask(ctx, t); err != nil {
 		return task.Task{}, err
 	}
+	if opts.Cookie != "" || opts.Referer != "" {
+		m.mu.Lock()
+		m.auth[t.ID] = ephemeralAuth{Cookie: opts.Cookie, Referer: opts.Referer}
+		m.mu.Unlock()
+	}
 	m.notifyChanged(t.ID)
 	m.nudge()
 	return t, nil
+}
+
+func (m *Manager) takeAuthHeaders(taskID string) http.Header {
+	m.mu.Lock()
+	auth, ok := m.auth[taskID]
+	m.mu.Unlock()
+	if !ok {
+		return nil
+	}
+	h := make(http.Header)
+	if auth.Cookie != "" {
+		h.Set("Cookie", auth.Cookie)
+	}
+	if auth.Referer != "" {
+		h.Set("Referer", auth.Referer)
+	}
+	return h
+}
+
+func (m *Manager) clearAuth(taskID string) {
+	m.mu.Lock()
+	delete(m.auth, taskID)
+	m.mu.Unlock()
 }
 
 // List returns all tasks.
@@ -249,6 +291,7 @@ func (m *Manager) Cancel(ctx context.Context, id string, files FileAction) error
 		_ = os.Remove(t.PartPath())
 		_ = os.Remove(t.DestinationPath)
 	}
+	m.clearAuth(id)
 	m.notifyChanged(id)
 	m.nudge()
 	return nil
@@ -277,6 +320,7 @@ func (m *Manager) Remove(ctx context.Context, id string, files FileAction) error
 	if err := m.store.DeleteTask(ctx, id); err != nil {
 		return err
 	}
+	m.clearAuth(id)
 	m.notifyChanged(id)
 	m.nudge()
 	return nil
@@ -382,6 +426,7 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 		MaxRetries:     cfg.MaxRetries,
 		ConnectTimeout: time.Duration(cfg.ConnectTimeoutSec) * time.Second,
 		StallTimeout:   time.Duration(cfg.StallTimeoutSec) * time.Second,
+		ExtraHeaders:   m.takeAuthHeaders(id),
 		OnProgress: func(ev engine.ProgressEvent) {
 			cur, gerr := m.store.GetTask(context.Background(), id)
 			if gerr != nil {
@@ -435,6 +480,7 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 	if err := m.store.UpdateTask(ctx, t); err != nil {
 		return err
 	}
+	m.clearAuth(id)
 	m.notifyChanged(id)
 	return nil
 }
@@ -495,6 +541,7 @@ func (m *Manager) failTask(ctx context.Context, t task.Task, code, message strin
 	cur.RetryCount++
 	cur.UpdatedAt = time.Now().UTC()
 	_ = m.store.UpdateTask(ctx, cur)
+	m.clearAuth(cur.ID)
 	m.notifyChanged(cur.ID)
 	return fmt.Errorf("%s: %s", code, message)
 }

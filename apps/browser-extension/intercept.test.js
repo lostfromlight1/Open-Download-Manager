@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const {
   shouldInterceptDownload,
   downloadBasename,
+  buildCookieHeader,
 } = require("./intercept.js");
 
 describe("shouldInterceptDownload", () => {
@@ -66,5 +67,22 @@ describe("downloadBasename", () => {
     assert.equal(downloadBasename("/tmp/dir/file.bin"), "file.bin");
     assert.equal(downloadBasename("file.iso"), "file.iso");
     assert.equal(downloadBasename(""), "");
+  });
+});
+
+describe("buildCookieHeader", () => {
+  it("joins name=value pairs", () => {
+    assert.equal(
+      buildCookieHeader([
+        { name: "a", value: "1" },
+        { name: "b", value: "2" },
+      ]),
+      "a=1; b=2",
+    );
+  });
+
+  it("returns empty for missing cookies", () => {
+    assert.equal(buildCookieHeader([]), "");
+    assert.equal(buildCookieHeader(null), "");
   });
 });

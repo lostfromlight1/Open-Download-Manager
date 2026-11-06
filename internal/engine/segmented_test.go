@@ -108,7 +108,7 @@ func TestVerifyRangeSupportRejectsNoRange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cap, err := engine.VerifyRangeSupport(context.Background(), client, srv.URL, "ODM-test")
+	cap, err := engine.VerifyRangeSupport(context.Background(), client, srv.URL, "ODM-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestVerifyRangeSupportOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cap, err := engine.VerifyRangeSupport(context.Background(), client, srv.URL, "ODM-test")
+	cap, err := engine.VerifyRangeSupport(context.Background(), client, srv.URL, "ODM-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

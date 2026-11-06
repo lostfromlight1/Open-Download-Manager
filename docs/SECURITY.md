@@ -31,7 +31,8 @@ The application downloads untrusted remote content and accepts URLs and commands
 - Require explicit user configuration (`browser.integration_enabled`, default off) and provide a disable switch that unregisters the host.
 - Keep permissions minimal; optional click-capture requests host permissions only when enabled.
 - Optional download interception requests the browser `downloads` permission only when the user enables **Send browser downloads to ODM** in the extension popup (default off).
-- Interception cancels the browser download only after a successful enqueue; it does not collect browsing history, cookies, or page content, and does not forward session cookies to ODM.
+- Optional cookie handoff requests the browser `cookies` permission only when **Forward session cookies for intercepted downloads** is enabled (default off). Cookie/Referer strings are validated (size + no CR/LF), applied as ephemeral in-memory headers for that task, never written to SQLite or logged, and dropped on cross-host redirects.
+- Interception cancels the browser download only after a successful enqueue; it does not collect browsing history or page content.
 - Host enqueues only; it does not run a second download scheduler.
 
 ### Persistence and secrets

@@ -1,4 +1,4 @@
-/* global shouldInterceptDownload, downloadBasename */
+/* global shouldInterceptDownload, downloadBasename, buildCookieHeader */
 // Chrome MV3 service worker loads helpers via importScripts.
 // Firefox lists intercept.js before this file in manifest.firefox.json.
 if (typeof importScripts === "function") {
@@ -47,7 +47,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg?.type === "getPrefs") {
     void chrome.storage.local
-      .get({ captureClicks: false, interceptDownloads: false })
+      .get({
+        captureClicks: false,
+        interceptDownloads: false,
+        forwardCookies: false,
+      })
       .then(sendResponse);
     return true;
   }
@@ -81,15 +85,20 @@ async function applyPrefs(msg) {
   if ("interceptDownloads" in msg) {
     ok = (await setInterceptDownloads(!!msg.interceptDownloads)) && ok;
   }
+  if ("forwardCookies" in msg) {
+    ok = (await setForwardCookies(!!msg.forwardCookies)) && ok;
+  }
 
   const stored = await chrome.storage.local.get({
     captureClicks: false,
     interceptDownloads: false,
+    forwardCookies: false,
   });
   return {
     ok,
     captureClicks: !!stored.captureClicks,
     interceptDownloads: !!stored.interceptDownloads,
+    forwardCookies: !!stored.forwardCookies,
   };
 }
 
@@ -124,8 +133,15 @@ function ping() {
   return sendNative({ v: 1, action: "ping" });
 }
 
-function enqueue(url, filename) {
-  return sendNative({ v: 1, action: "enqueue", url, filename });
+function enqueue(url, filename, cookie, referer) {
+  const payload = { v: 1, action: "enqueue", url, filename };
+  if (cookie) {
+    payload.cookie = cookie;
+  }
+  if (referer) {
+    payload.referer = referer;
+  }
+  return sendNative(payload);
 }
 
 async function setClickCapture(enabled) {
@@ -184,6 +200,23 @@ async function setInterceptDownloads(enabled) {
   return true;
 }
 
+async function setForwardCookies(enabled) {
+  if (!enabled) {
+    await chrome.storage.local.set({ forwardCookies: false });
+    return true;
+  }
+  // cookies permission is requested in popup.js during the checkbox click.
+  const has = await chrome.permissions.contains({
+    permissions: ["cookies"],
+  });
+  if (!has) {
+    await chrome.storage.local.set({ forwardCookies: false });
+    return false;
+  }
+  await chrome.storage.local.set({ forwardCookies: true });
+  return true;
+}
+
 function attachInterceptListener() {
   if (!chrome.downloads?.onCreated) {
     return;
@@ -226,7 +259,18 @@ async function handleDownloadCreated(item) {
   interceptInFlight.add(item.id);
   try {
     const name = downloadBasename(item.filename || "");
-    const res = await enqueue(url, name);
+    let cookie = "";
+    const prefsAuth = await chrome.storage.local.get({ forwardCookies: false });
+    if (prefsAuth.forwardCookies && chrome.cookies?.getAll) {
+      try {
+        const list = await chrome.cookies.getAll({ url });
+        cookie = buildCookieHeader(list);
+      } catch {
+        // Missing cookies permission or API error — enqueue without Cookie.
+      }
+    }
+    const referer = String(item.referrer || "").trim();
+    const res = await enqueue(url, name, cookie, referer || undefined);
     // Leave the browser download alone if ODM rejected or is unreachable.
     if (!res?.ok) {
       return;

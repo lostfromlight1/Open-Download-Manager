@@ -40,6 +40,8 @@ Feature labels:
 - Clear empty, loading, and error states.
 - Native notifications for completion (opt-in).
 - Close-to-tray: hide the window to the system tray (default on); downloads keep running until tray Quit.
+- Launch at login (opt-in): OS autostart via Wails; starts hidden to the tray (`--hidden`).
+- Tray: live aggregate speed tooltip; Pause all active / Resume paused.
 - Desktop window layout usable from ~800px wide to wide screens (no phone layout).
 
 ### Later
@@ -47,7 +49,7 @@ Feature labels:
 - Download categories and tags.
 - Per-download settings.
 - Speed graph and history.
-- Richer tray/menu-bar status (speed, per-task actions).
+- Per-task tray actions.
 - Global hotkey.
 - Automatic clipboard URL detection (opt-in).
 - Drag-and-drop URL support.
@@ -66,11 +68,11 @@ Feature labels:
 - Extension popup: **Send browser downloads to ODM** (off by default; requests `downloads` permission).
 - On browser download start: enqueue http(s) URL (+ suggested filename) into ODM, then cancel/erase the browser item when enqueue succeeds.
 - Skip `blob:`/`data:` and likely HTML page bodies (`text/html`, `application/xhtml`).
-- Does not forward cookies or auth headers; signed-in downloads may fail in ODM.
+- Optional **Forward session cookies for intercepted downloads** (requests `cookies` permission): one-shot Cookie + Referer for that task only, held in memory — never stored in SQLite. Restart may require re-intercept for signed-in URLs.
 - Requires desktop `browser.integration_enabled` + default download folder (same as enqueue).
 
 ### Later
-- Cookie/header-aware authenticated intercept.
+- Broader authenticated intercept (e.g. Authorization header) with a reviewed secret model.
 - Send multiple selected links.
 - Detect supported media links only when permitted and technically lawful.
 

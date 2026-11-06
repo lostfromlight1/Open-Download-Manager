@@ -26,6 +26,7 @@ type DownloadService struct {
 	decisions     *InteractiveDecisions
 	sink          EventSink
 	tray          *trayController
+	speeds        map[string]float64 // taskID → latest bytes/sec for tray tooltip
 	dataDir       string
 	ready         bool
 	initErr       string
@@ -44,6 +45,41 @@ func (s *DownloadService) setTrayController(tray *trayController) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.tray = tray
+	if tray != nil {
+		tray.setActions(s)
+	}
+}
+
+// PauseAllActive pauses queued/active downloads (tray menu).
+func (s *DownloadService) PauseAllActive() {
+	if err := s.requireReady(); err != nil {
+		return
+	}
+	list, err := s.mgr.List(context.Background())
+	if err != nil {
+		return
+	}
+	for _, t := range list {
+		if task.IsActive(t.State) || t.State == task.StateQueued {
+			_ = s.mgr.Pause(context.Background(), t.ID)
+		}
+	}
+}
+
+// ResumeAllPaused resumes paused tasks (tray menu).
+func (s *DownloadService) ResumeAllPaused() {
+	if err := s.requireReady(); err != nil {
+		return
+	}
+	list, err := s.mgr.List(context.Background())
+	if err != nil {
+		return
+	}
+	for _, t := range list {
+		if t.State == task.StatePaused {
+			_ = s.mgr.Resume(context.Background(), t.ID)
+		}
+	}
 }
 
 // bind wires the opened manager/store and starts listening for task updates.
@@ -278,6 +314,7 @@ func (s *DownloadService) UpdateSettings(dto SettingsDTO) (SettingsDTO, error) {
 	s.mu.Unlock()
 	if tray != nil {
 		tray.SetCloseToTray(cfg.CloseToTray)
+		tray.SetLaunchAtLogin(cfg.LaunchAtLogin)
 	}
 	return out, nil
 }
@@ -378,6 +415,25 @@ func (l managerListener) OnProgress(taskID string, ev engine.ProgressEvent) {
 		BytesPerSecond:  bps,
 		Status:          status,
 	})
+
+	s.mu.Lock()
+	if s.speeds == nil {
+		s.speeds = make(map[string]float64)
+	}
+	if ev.BytesPerSec > 0 {
+		s.speeds[taskID] = ev.BytesPerSec
+	} else {
+		delete(s.speeds, taskID)
+	}
+	var sum float64
+	for _, v := range s.speeds {
+		sum += v
+	}
+	tray := s.tray
+	s.mu.Unlock()
+	if tray != nil {
+		tray.SetAggregateSpeed(sum)
+	}
 }
 
 func (l managerListener) OnChanged(taskID string) {
@@ -404,6 +460,22 @@ func (l managerListener) OnChanged(taskID string) {
 	}
 	dto := taskToDTO(cur)
 	sink.Emit(EventDownloadChanged, ChangedEventDTO{TaskID: taskID, Download: &dto})
+
+	if !task.IsActive(cur.State) {
+		s.mu.Lock()
+		if s.speeds != nil {
+			delete(s.speeds, taskID)
+		}
+		var sum float64
+		for _, v := range s.speeds {
+			sum += v
+		}
+		tray := s.tray
+		s.mu.Unlock()
+		if tray != nil {
+			tray.SetAggregateSpeed(sum)
+		}
+	}
 }
 
 // startReconcileLocked emits download-changed for tasks inserted by odm-nmhost

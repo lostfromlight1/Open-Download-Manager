@@ -99,10 +99,18 @@ func NewClient(opts ClientOptions) (*http.Client, error) {
 		Transport: transport,
 		// CheckRedirect is called before following an HTTP redirect.
 		// Returning an error stops redirect following.
-		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			// via is the list of requests already made in this redirect chain.
 			if len(via) >= maxRedirects {
 				return fmt.Errorf("stopped after %d redirects", maxRedirects)
+			}
+			// Drop session headers when the redirect crosses host or scheme.
+			if len(via) > 0 {
+				prev := via[len(via)-1].URL
+				if prev.Host != req.URL.Host || prev.Scheme != req.URL.Scheme {
+					req.Header.Del("Cookie")
+					req.Header.Del("Referer")
+				}
 			}
 			return nil // allow this redirect
 		},

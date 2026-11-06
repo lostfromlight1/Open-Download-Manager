@@ -60,6 +60,7 @@ export interface SettingsDTO {
   browserHostRegistered: boolean;
   browserHostMessage: string;
   closeToTray: boolean;
+  launchAtLogin: boolean;
 }
 
 export type FilterTab =

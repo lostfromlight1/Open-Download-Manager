@@ -51,6 +51,7 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	cfg.BrowserIntegrationEnabled = true
 	cfg.ChromeExtensionID = "abcdefghijklmnopqrstuvwxyzabcdef"
 	cfg.CloseToTray = false
+	cfg.LaunchAtLogin = true
 	if err := store.SaveSettings(ctx, cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -66,6 +67,9 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	}
 	if loaded.CloseToTray {
 		t.Fatalf("close_to_tray want false: %#v", loaded)
+	}
+	if !loaded.LaunchAtLogin {
+		t.Fatalf("launch_at_login want true: %#v", loaded)
 	}
 
 	segs := []storage.Segment{

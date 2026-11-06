@@ -26,6 +26,7 @@ const (
 	SettingBrowserIntegration = "browser.integration_enabled" // true | false
 	SettingChromeExtensionID  = "browser.chrome_extension_id" // for NM host allows_origins
 	SettingCloseToTray        = "ui.close_to_tray"            // hide to tray instead of quit
+	SettingLaunchAtLogin      = "ui.launch_at_login"          // OS autostart (desktop)
 )
 
 // Settings is the typed view of persisted configuration.
@@ -43,6 +44,7 @@ type Settings struct {
 	BrowserIntegrationEnabled bool
 	ChromeExtensionID         string // optional; used when registering Chrome NM host
 	CloseToTray               bool   // keep RunQueue alive when the window is closed
+	LaunchAtLogin             bool   // register OS login autostart (desktop)
 }
 
 // DefaultSettings returns Phase 2/3 defaults.
@@ -61,6 +63,7 @@ func DefaultSettings() Settings {
 		BrowserIntegrationEnabled: false,
 		ChromeExtensionID:         "",
 		CloseToTray:               true,
+		LaunchAtLogin:             false,
 	}
 }
 
@@ -119,6 +122,8 @@ func (s *Store) GetSettings(ctx context.Context) (Settings, error) {
 			out.ChromeExtensionID = strings.TrimSpace(v)
 		case SettingCloseToTray:
 			out.CloseToTray = strings.EqualFold(strings.TrimSpace(v), "true") || v == "1"
+		case SettingLaunchAtLogin:
+			out.LaunchAtLogin = strings.EqualFold(strings.TrimSpace(v), "true") || v == "1"
 		}
 	}
 	return out, rows.Err()
@@ -163,6 +168,7 @@ func (s *Store) SaveSettings(ctx context.Context, cfg Settings) error {
 		SettingBrowserIntegration: strconv.FormatBool(cfg.BrowserIntegrationEnabled),
 		SettingChromeExtensionID:  strings.TrimSpace(cfg.ChromeExtensionID),
 		SettingCloseToTray:        strconv.FormatBool(cfg.CloseToTray),
+		SettingLaunchAtLogin:      strconv.FormatBool(cfg.LaunchAtLogin),
 	}
 	for k, v := range pairs {
 		if _, err := tx.ExecContext(ctx, `

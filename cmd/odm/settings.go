@@ -60,6 +60,7 @@ func runSettingsShow(ctx context.Context, args []string) error {
 	fmt.Fprintf(os.Stdout, "browser.integration_enabled=%v\n", cfg.BrowserIntegrationEnabled)
 	fmt.Fprintf(os.Stdout, "browser.chrome_extension_id=%s\n", cfg.ChromeExtensionID)
 	fmt.Fprintf(os.Stdout, "ui.close_to_tray=%v\n", cfg.CloseToTray)
+	fmt.Fprintf(os.Stdout, "ui.launch_at_login=%v\n", cfg.LaunchAtLogin)
 	return nil
 }
 
@@ -193,6 +194,16 @@ func applySetting(cfg *storage.Settings, key, value string) error {
 			cfg.CloseToTray = false
 		default:
 			return fmt.Errorf("ui.close_to_tray must be true or false")
+		}
+		return nil
+	case storage.SettingLaunchAtLogin, "launch-at-login", "autostart":
+		switch strings.ToLower(strings.TrimSpace(value)) {
+		case "true", "1", "yes", "on":
+			cfg.LaunchAtLogin = true
+		case "false", "0", "no", "off":
+			cfg.LaunchAtLogin = false
+		default:
+			return fmt.Errorf("ui.launch_at_login must be true or false")
 		}
 		return nil
 	default:

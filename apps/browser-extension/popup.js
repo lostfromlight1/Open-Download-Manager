@@ -2,6 +2,7 @@ const statusEl = document.getElementById("status");
 const errorEl = document.getElementById("lastError");
 const captureEl = document.getElementById("captureClicks");
 const interceptEl = document.getElementById("interceptDownloads");
+const forwardEl = document.getElementById("forwardCookies");
 const refreshBtn = document.getElementById("refresh");
 
 async function refresh() {
@@ -27,13 +28,13 @@ async function loadPrefs() {
   const prefs = await chrome.runtime.sendMessage({ type: "getPrefs" });
   captureEl.checked = !!prefs?.captureClicks;
   interceptEl.checked = !!prefs?.interceptDownloads;
+  forwardEl.checked = !!prefs?.forwardCookies;
 }
 
 captureEl.addEventListener("change", async () => {
   errorEl.hidden = true;
   const want = captureEl.checked;
   if (want) {
-    // Optional host permission must be requested here (user gesture), not in the SW.
     const granted = await chrome.permissions.request({
       origins: ["http://*/*", "https://*/*"],
     });
@@ -61,7 +62,6 @@ interceptEl.addEventListener("change", async () => {
   errorEl.hidden = true;
   const want = interceptEl.checked;
   if (want) {
-    // Optional downloads permission must be requested here (user gesture), not in the SW.
     const granted = await chrome.permissions.request({
       permissions: ["downloads"],
     });
@@ -76,7 +76,7 @@ interceptEl.addEventListener("change", async () => {
     try {
       await chrome.permissions.remove({ permissions: ["downloads"] });
     } catch {
-      // Permission may already be absent.
+      // already absent
     }
   }
   const res = await chrome.runtime.sendMessage({
@@ -88,6 +88,38 @@ interceptEl.addEventListener("change", async () => {
     errorEl.hidden = false;
     errorEl.textContent =
       "Could not enable interception (Downloads permission missing).";
+  }
+});
+
+forwardEl.addEventListener("change", async () => {
+  errorEl.hidden = true;
+  const want = forwardEl.checked;
+  if (want) {
+    const granted = await chrome.permissions.request({
+      permissions: ["cookies"],
+    });
+    if (!granted) {
+      forwardEl.checked = false;
+      errorEl.hidden = false;
+      errorEl.textContent =
+        "Cookie handoff needs the Cookies permission.";
+      return;
+    }
+  } else {
+    try {
+      await chrome.permissions.remove({ permissions: ["cookies"] });
+    } catch {
+      // already absent
+    }
+  }
+  const res = await chrome.runtime.sendMessage({
+    type: "setPrefs",
+    forwardCookies: want,
+  });
+  forwardEl.checked = !!(res?.ok && want);
+  if (want && !res?.ok) {
+    errorEl.hidden = false;
+    errorEl.textContent = "Could not enable cookie handoff.";
   }
 });
 

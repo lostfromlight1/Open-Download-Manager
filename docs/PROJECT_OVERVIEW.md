@@ -59,7 +59,8 @@ Platform support is a release commitment: do not advertise a platform as support
 - v0.5: browser extension and native messaging host.
 - Phase 7: close-to-tray keeps downloads alive when the window is hidden (same process).
 - Phase 8: opt-in browser download interception + desktop UI fluid layout (~800px+).
-- Later: cookie-aware intercept; optional separate background service / autostart; Network Access / Tunneling track.
+- Phase 9: cookie/Referer handoff (memory-only), launch-at-login, richer tray.
+- Later: optional separate background service; Network Access / Tunneling track.
 - v1.0: signed/reproducible release process, platform QA, documentation, and security review.
 
 Version numbers are planning labels, not promises.

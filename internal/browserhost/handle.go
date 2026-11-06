@@ -56,6 +56,8 @@ func (h *Handler) enqueue(ctx context.Context, cfg storage.Settings, req Request
 		URL:         url,
 		Destination: dest,
 		DisplayName: name,
+		Cookie:      strings.TrimSpace(req.Cookie),
+		Referer:     strings.TrimSpace(req.Referer),
 	})
 	if err != nil {
 		return errResponse("enqueue_failed", err.Error())

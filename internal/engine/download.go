@@ -115,7 +115,7 @@ func Download(ctx context.Context, opts Options) (*Result, error) {
 			return nil, err
 		}
 		if existing == 0 {
-			cap, verr := VerifyRangeSupport(ctx, client, rawURL, opts.UserAgent)
+			cap, verr := VerifyRangeSupport(ctx, client, rawURL, opts.UserAgent, opts.ExtraHeaders)
 			if verr != nil && !errors.Is(verr, ErrRangeNotSupported) {
 				// Transport / HTTP errors: honour normal retry via single-stream
 				// only when the probe itself was inconclusive in a retryable way.
@@ -218,6 +218,7 @@ func attemptDownload(
 		return nil, err
 	}
 	netx.ApplyUserAgent(req, opts.UserAgent)
+	ApplyExtraHeaders(req, opts.ExtraHeaders)
 
 	// HTTP Range asks the server for bytes starting at `existing`.
 	// Example: bytes=1024- means "send from offset 1024 to the end".

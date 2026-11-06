@@ -9,6 +9,7 @@ import (
 	"context"
 	"embed"
 	"log"
+	"os"
 
 	"github.com/lostfromlight1/Open-Download-Manager/internal/appdir"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/manager"
@@ -20,6 +21,8 @@ import (
 var assets embed.FS
 
 func main() {
+	startHidden := hasArg("--hidden")
+
 	downloadSvc := NewDownloadService()
 	shellSvc := NewShellService(downloadSvc)
 
@@ -53,6 +56,7 @@ func main() {
 	defer queueCancel()
 
 	closeToTray := true
+	launchAtLogin := false
 	dataDir, err := appdir.Resolve("")
 	if err != nil {
 		downloadSvc.markFailed(err)
@@ -66,6 +70,7 @@ func main() {
 			cfg, cfgErr := store.GetSettings(context.Background())
 			if cfgErr == nil {
 				closeToTray = cfg.CloseToTray
+				launchAtLogin = cfg.LaunchAtLogin
 			}
 			mgr := manager.New(store, decisions)
 			downloadSvc.bind(mgr, store, decisions, sink, dataDir)
@@ -85,6 +90,8 @@ func main() {
 	decisions.SetNeedUI(func() {
 		tray.ShowMainWindow()
 	})
+	// Re-apply autostart on each launch so the OS entry stays in sync.
+	syncLaunchAtLogin(app, launchAtLogin)
 
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "Open Download Manager",
@@ -96,9 +103,21 @@ func main() {
 		URL:              "/",
 	})
 	tray.attachWindow(win)
+	if startHidden {
+		tray.StartHidden()
+	}
 
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
 	queueCancel()
+}
+
+func hasArg(name string) bool {
+	for _, a := range os.Args[1:] {
+		if a == name {
+			return true
+		}
+	}
+	return false
 }

@@ -153,7 +153,7 @@ Keep downloads alive in the **same** desktop process when the window is hidden (
 **Deferred**
 
 - Separate headless background service binary
-- Launch-at-login / OS autostart
+- Launch-at-login delivered in Phase 9
 - Deep Linux DE tray quirks beyond basic Wails support
 
 **Exit criteria**
@@ -182,6 +182,30 @@ Keep downloads alive in the **same** desktop process when the window is hidden (
 - HTML-like MIME downloads are not stolen from the browser
 - Enqueue failure leaves the browser download alone
 - Desktop UI usable from min window size to default 1040×720
+
+## Phase 9 — Auth handoff, launch-at-login, richer tray
+
+**Status:** implemented (memory-only Cookie/Referer; Wails Autostart; tray speed + pause/resume).
+
+**Deliverables**
+
+- Extension opt-in **Forward session cookies for intercepted downloads** (`cookies` permission from popup)
+- NM `cookie` / `referer` fields; manager in-memory headers; engine ExtraHeaders; strip on cross-host redirect
+- Setting `ui.launch_at_login` + Wails `Autostart` with `--hidden` start to tray
+- Tray tooltip aggregate speed; menu Pause all active / Resume paused
+- Docs/tests; cookies never persisted to SQLite
+
+**Deferred**
+
+- v1.0 code signing / notarization
+- Separate headless daemon
+- Arbitrary Authorization header forwarding
+
+**Exit criteria**
+
+- Cookie handoff succeeds for auth-gated URLs in-process; restart loses ephemeral headers
+- Launch-at-login opt-in registers Autostart; `--hidden` starts to tray
+- Tray shows live speed; Pause/Resume work; Quit stops the queue
 
 ## Phase N — Network Access / Tunneling track
 

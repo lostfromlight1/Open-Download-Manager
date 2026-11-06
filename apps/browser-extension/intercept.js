@@ -41,9 +41,36 @@ function downloadBasename(filename) {
   return parts[parts.length - 1] || "";
 }
 
+/**
+ * Build a Cookie request header from chrome.cookies.getAll results.
+ * Caps total length to match the native host (8 KiB).
+ */
+function buildCookieHeader(cookies) {
+  if (!Array.isArray(cookies) || cookies.length === 0) {
+    return "";
+  }
+  const max = 8 * 1024;
+  const parts = [];
+  let len = 0;
+  for (const c of cookies) {
+    if (!c || typeof c.name !== "string") {
+      continue;
+    }
+    const piece = `${c.name}=${c.value == null ? "" : String(c.value)}`;
+    const add = (parts.length === 0 ? 0 : 2) + piece.length;
+    if (len + add > max) {
+      break;
+    }
+    parts.push(piece);
+    len += add;
+  }
+  return parts.join("; ");
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     shouldInterceptDownload,
     downloadBasename,
+    buildCookieHeader,
   };
 }

@@ -25,6 +25,9 @@ type Request struct {
 	Action   string `json:"action"`
 	URL      string `json:"url,omitempty"`
 	Filename string `json:"filename,omitempty"`
+	// Cookie / Referer are one-shot auth handoff for intercept (never persisted).
+	Cookie  string `json:"cookie,omitempty"`
+	Referer string `json:"referer,omitempty"`
 }
 
 // Response is returned to the extension.
@@ -57,6 +60,12 @@ func ParseRequest(raw []byte) (Request, error) {
 	case "ping", "enqueue":
 	default:
 		return Request{}, fmt.Errorf("unsupported action %q", req.Action)
+	}
+	if err := ValidateAuthHeader("cookie", req.Cookie); err != nil {
+		return Request{}, err
+	}
+	if err := ValidateAuthHeader("referer", req.Referer); err != nil {
+		return Request{}, err
 	}
 	return req, nil
 }

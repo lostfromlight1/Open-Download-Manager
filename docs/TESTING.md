@@ -56,6 +56,7 @@ Required server behaviors:
 - Phase 6: `internal/browserhost` covers NM framing, schema rejection, disabled/no-directory enqueue, and happy-path enqueue into a temp SQLite store.
 - Phase 7: `internal/storage` round-trips `ui.close_to_tray`; `apps/desktop` covers `ShouldHideOnClose` and resume-mismatch `NeedUI` (show window when a decision is required).
 - Phase 8: `apps/browser-extension` `node --test intercept.test.js` covers http(s) accept, HTML/blob skip; desktop UI remains covered by existing frontend tests.
+- Phase 9: browserhost cookie/referer validation; manager ephemeral Cookie handoff; engine ExtraHeaders allowlist; storage `ui.launch_at_login`; tray tooltip formatting.
 
 ## Quality gates
 
@@ -124,6 +125,21 @@ Before merging:
 
 1. Resize the window near the minimum (~800×560) and at the default (~1040×720).
 2. Confirm stats, filter tabs, download rows, Settings path+Browse, and dialogs remain usable without horizontal clipping.
+
+## Phase 9 smoke (manual)
+
+### Cookie handoff
+
+1. Enable browser integration + intercept; enable **Forward session cookies for intercepted downloads** (allow Cookies).
+2. While signed in to a site that gates downloads, start a download that would 401 without cookies.
+3. Expect the task to complete in ODM. Restart ODM and resume the same auth URL without re-intercept — expect failure unless the URL is public.
+
+### Launch-at-login + richer tray
+
+1. Settings → enable **Launch Open Download Manager when I sign in** → Save (Windows smoke).
+2. Confirm tray menu includes Pause all active / Resume paused; active download updates tooltip speed.
+3. Quit; sign out/in or run the registered command with `--hidden` → app should start to tray without showing the window until Show.
+4. Disable launch-at-login → Save → autostart entry removed.
 
 ## Reliability tests
 

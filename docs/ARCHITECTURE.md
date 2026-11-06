@@ -32,7 +32,8 @@ Desktop tray (hide window) ----------> same process / RunQueue (Phase 7)
 Future headless service (deferred) --> same engine / manager packages
 
 Browser extension ---> Native Messaging host ---> enqueue API
-  (optional downloads.onCreated intercept → enqueue + cancel browser item)
+  (optional downloads.onCreated intercept → enqueue + cancel browser item;
+   optional one-shot Cookie/Referer in memory for that task)
 ```
 
 ## 2. Architectural boundaries

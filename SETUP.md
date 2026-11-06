@@ -184,6 +184,7 @@ go run ./cmd/odm settings show
 - Resume mismatch policy for `queue run`: `--on-mismatch abort|restart`.
 - `odm settings set download.max_connections 4`: per-download worker cap for the queue.
 - `odm settings set ui.close_to_tray true|false`: when true (default), closing the desktop window hides to the system tray and keeps downloads running; tray **Quit** exits fully and stops the queue.
+- `odm settings set ui.launch_at_login true|false`: when true, the desktop app registers OS login autostart (Wails; Windows verified) with `--hidden` (starts to tray).
 
 ### 5.4 Production desktop binary
 
@@ -249,7 +250,8 @@ go build -o apps/desktop/bin/odm-nmhost ./cmd/odm-nmhost
    - Chrome/Edge: Developer mode → Load unpacked → select that folder (`manifest.json`).
    - Firefox: use `manifest.firefox.json` (copy over `manifest.json` or load via `about:debugging` temporary add-on).
 4. Open the extension popup and click **Refresh status**. Right-click a link → **Download with ODM**.
-5. Optional: enable **Send browser downloads to ODM** in the popup (requests the Downloads permission). Normal browser file downloads are then enqueued into ODM and cancelled in the browser when enqueue succeeds. HTML page bodies and `blob:`/`data:` URLs are skipped. Session cookies are not forwarded.
+5. Optional: enable **Send browser downloads to ODM** in the popup (requests the Downloads permission). Normal browser file downloads are then enqueued into ODM and cancelled in the browser when enqueue succeeds. HTML page bodies and `blob:`/`data:` URLs are skipped.
+6. Optional: enable **Forward session cookies for intercepted downloads** (Cookies permission). Cookie/Referer are one-shot and not stored by ODM.
 
 CLI: `odm settings set browser.integration_enabled true` (still register the host via desktop Save, or call install helpers after building `odm-nmhost`).
 
@@ -334,9 +336,10 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 - Clone → install → test
 - Desktop app via `wails3 dev` / `wails3 build` (dashboard, settings, live progress, keep/delete and mismatch dialogs)
 - Close-to-tray (default on): hide window to system tray; downloads keep running until tray Quit
+- Launch-at-login (opt-in) and richer tray (speed + pause/resume)
 - Unsigned packaging: Windows NSIS, macOS `.app`, Linux `.deb` (CI `desktop-package`)
 - Opt-in browser extension + `odm-nmhost` native messaging (context-menu enqueue)
-- Opt-in browser download interception (extension popup; no cookie forwarding)
+- Opt-in browser download interception + optional cookie/Referer handoff (memory-only)
 - `odm version` and `odm download` (single-stream + segmented HTTP/HTTPS, resume, retry, proxy modes)
 - `odm task` / `odm queue` / `odm settings` (SQLite queue shared with desktop, concurrency, connections, keep/delete, mismatch policy, proxy persistence, close-to-tray)
 
@@ -345,7 +348,7 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 - Interactive TTY prompts (CLI currently uses explicit flags for decisions)
 - Per-segment crash resume wired through the manager (segment rows exist; engine clears failed segmented `.part`s for safety)
 - Signed / notarized releases (v1.0)
-- Separate headless background service / launch-at-login (beyond close-to-tray in the desktop process)
-- Cookie/header-aware authenticated browser intercept
+- Separate headless background service (beyond close-to-tray + launch-at-login in the desktop process)
+- Authorization-header / secret-store authenticated downloads
 
 See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for the roadmap.

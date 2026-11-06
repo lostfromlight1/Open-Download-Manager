@@ -250,6 +250,7 @@ func attemptSegment(
 		return 0, err
 	}
 	netx.ApplyUserAgent(req, opts.UserAgent)
+	ApplyExtraHeaders(req, opts.ExtraHeaders)
 	// Closed Range: bytes=START-END (inclusive).
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", seg.Start, seg.End))
 

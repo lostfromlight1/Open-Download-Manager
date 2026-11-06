@@ -20,3 +20,13 @@ func TestShouldHideOnClose(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatTrayTooltip(t *testing.T) {
+	t.Parallel()
+	if got := FormatTrayTooltip(0); got != "Open Download Manager" {
+		t.Fatalf("idle: %q", got)
+	}
+	if got := FormatTrayTooltip(1500); got != "ODM — 1.5 KB/s" {
+		t.Fatalf("kb: %q", got)
+	}
+}

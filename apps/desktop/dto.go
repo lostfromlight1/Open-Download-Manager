@@ -47,6 +47,7 @@ type SettingsDTO struct {
 	BrowserHostRegistered     bool   `json:"browserHostRegistered"` // status only; not persisted
 	BrowserHostMessage        string `json:"browserHostMessage"`    // install/uninstall result text
 	CloseToTray               bool   `json:"closeToTray"`           // hide to tray on window close
+	LaunchAtLogin             bool   `json:"launchAtLogin"`         // OS autostart (desktop)
 }
 
 // ProgressEventDTO is emitted on odm:download-progress.
@@ -108,6 +109,7 @@ func settingsToDTO(s storage.Settings) SettingsDTO {
 		BrowserIntegrationEnabled: s.BrowserIntegrationEnabled,
 		ChromeExtensionID:         s.ChromeExtensionID,
 		CloseToTray:               s.CloseToTray,
+		LaunchAtLogin:             s.LaunchAtLogin,
 	}
 }
 
@@ -122,6 +124,7 @@ func settingsFromDTO(d SettingsDTO) (storage.Settings, error) {
 	cfg.BrowserIntegrationEnabled = d.BrowserIntegrationEnabled
 	cfg.ChromeExtensionID = strings.TrimSpace(d.ChromeExtensionID)
 	cfg.CloseToTray = d.CloseToTray
+	cfg.LaunchAtLogin = d.LaunchAtLogin
 
 	switch netx.ProxyMode(d.ProxyMode) {
 	case netx.ProxySystem, "":

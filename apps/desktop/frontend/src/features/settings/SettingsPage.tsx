@@ -217,6 +217,20 @@ export function SettingsPage({ onBack, onSaved }: Props) {
               When enabled, closing the window hides ODM to the tray; downloads
               keep running. Use Quit in the tray menu to exit fully.
             </p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.launchAtLogin}
+                onChange={(e) =>
+                  setForm({ ...form, launchAtLogin: e.target.checked })
+                }
+              />
+              Launch Open Download Manager when I sign in to Windows
+            </label>
+            <p className="text-sm text-[var(--color-text-muted)]">
+              Starts hidden to the tray (with --hidden). Turn off and Save to
+              remove the login entry.
+            </p>
           </fieldset>
 
           <fieldset className="space-y-3">

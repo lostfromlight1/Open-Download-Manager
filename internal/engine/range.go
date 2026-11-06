@@ -43,7 +43,7 @@ type RangeCapability struct {
 //     206 Partial Content and Content-Range: bytes 0-0/TOTAL.
 //   - If it ignores Range and returns 200, multi-connection mode is unsafe.
 //   - Malformed Content-Range must be treated as "not supported".
-func VerifyRangeSupport(ctx context.Context, client *http.Client, rawURL string, userAgent string) (RangeCapability, error) {
+func VerifyRangeSupport(ctx context.Context, client *http.Client, rawURL string, userAgent string, extra http.Header) (RangeCapability, error) {
 	if client == nil {
 		return RangeCapability{}, fmt.Errorf("http client is required")
 	}
@@ -56,6 +56,7 @@ func VerifyRangeSupport(ctx context.Context, client *http.Client, rawURL string,
 		return RangeCapability{}, err
 	}
 	netx.ApplyUserAgent(req, userAgent)
+	ApplyExtraHeaders(req, extra)
 	// Ask for the first byte only — cheap probe that still exercises Range.
 	req.Header.Set("Range", "bytes=0-0")
 

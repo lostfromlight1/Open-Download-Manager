@@ -52,6 +52,10 @@ type Options struct {
 	UserAgent  string
 	HTTPClient *http.Client // optional; created from Proxy/timeouts when nil
 
+	// ExtraHeaders are applied to outbound GETs (allowlisted: Cookie, Referer).
+	// Used for one-shot browser auth handoff; never persisted by the engine.
+	ExtraHeaders http.Header
+
 	// OnProgress is an optional callback (function value). nil means "no callback".
 	OnProgress func(ProgressEvent)
 
