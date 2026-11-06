@@ -1,0 +1,15 @@
+---
+description: Project-wide rules for Open Download Manager (ODM)
+alwaysApply: true
+---
+
+# Project rules
+
+- Read `AGENTS.md` and relevant `docs/*.md` before implementing.
+- Follow `docs/PROJECT_OVERVIEW.md`, `docs/FEATURES.md`, `docs/ARCHITECTURE.md`, and `docs/SECURITY.md`.
+- Go is the only backend language. Do not reintroduce Rust or Tauri.
+- Keep the core download engine independent from Wails and React.
+- Do not implement features outside the current phase without asking.
+- Prefer incremental, testable changes.
+- Do not claim functionality exists unless code and tests prove it.
+- Update documentation when behavior changes.

@@ -1,0 +1,14 @@
+---
+description: Rules for React and TypeScript frontend
+globs: ["apps/desktop/frontend/src/**/*.{ts,tsx}"]
+alwaysApply: false
+---
+
+- Use TypeScript strict mode.
+- Keep networking, filesystem writes, and download orchestration in Go.
+- Use typed Wails bindings and events when calling Go.
+- Keep components small and feature-oriented.
+- Handle loading, empty, error, and reconnect states.
+- Do not simulate progress or invent speed/ETA.
+- Make core actions keyboard accessible.
+- Do not expose arbitrary filesystem or shell capabilities.

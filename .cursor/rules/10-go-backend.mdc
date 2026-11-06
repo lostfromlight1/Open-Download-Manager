@@ -1,0 +1,20 @@
+---
+description: Rules for the Go backend and download engine
+globs: ["**/*.go", "go.mod", "go.sum"]
+alwaysApply: false
+---
+
+- Use idiomatic Go with clear package boundaries.
+- Keep engine packages free of Wails imports.
+- Prefer `net/http` with an explicit `http.Client` and transport configuration.
+- Stream response bodies to disk; do not buffer entire files in memory.
+- Bound concurrency, buffers, retries, and response sizes.
+- Use context cancellation for pause/cancel and timeouts.
+- Validate every HTTP range response before writing.
+- Never assume `Accept-Ranges` proves range support.
+- Fall back to single-stream if valid 206/Content-Range behavior is not confirmed.
+- Prevent overlapping writes and stale-resume corruption.
+- Put optional Network Access / Tunneling behind a separate package and interface.
+- Ordinary downloads must work when tunneling is disabled.
+- Add unit and local-server integration tests for failure paths.
+- Never disable TLS verification or log credentials.

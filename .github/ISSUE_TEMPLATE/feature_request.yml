@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a change against the published feature scope
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope in docs/FEATURES.md
+      options:
+        - MVP
+        - Later
+        - Out of scope, and this request needs a product decision
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true

@@ -1,0 +1,15 @@
+---
+description: Security and privacy rules
+alwaysApply: true
+---
+
+- Treat URLs, HTTP headers, filenames, browser messages, and downloaded content as untrusted.
+- Validate redirect targets and restrict supported schemes for ordinary downloads to http/https in MVP.
+- Prevent path traversal and writes outside the chosen destination.
+- Use parameterized SQL.
+- Never disable TLS certificate verification.
+- Do not log cookies, authorization headers, passwords, or signed URL query strings.
+- Do not collect browser history or page content by default.
+- Keep Wails/desktop privileges and extension permissions minimal.
+- Reject malformed or oversized native messaging payloads.
+- Network Access / Tunneling features require explicit opt-in, user-configurable endpoints, and a documented threat model before implementation.

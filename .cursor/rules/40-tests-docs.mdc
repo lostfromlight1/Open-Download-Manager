@@ -1,0 +1,11 @@
+---
+description: Testing and documentation expectations
+alwaysApply: true
+---
+
+- Add tests for every behavior change.
+- Prefer deterministic local HTTP fixtures over public servers.
+- Test normal behavior and failure behavior, including flaky-network simulations.
+- Run Go formatting/vet/tests, frontend lint, and type checks as applicable.
+- Update relevant docs and examples.
+- Do not mark a milestone complete unless its exit criteria are met.
