@@ -115,7 +115,7 @@ Usage:
   odm task add <url> [flags]          Enqueue + run via SQLite queue
   odm task list
   odm task pause|resume|cancel|remove <id>
-  odm queue run                       Process queue until Ctrl+C
+  odm queue run [--once]              Process queue (Ctrl+C to stop; --once exits when idle)
   odm settings show|set <key> <value>
 
 Shared flags:

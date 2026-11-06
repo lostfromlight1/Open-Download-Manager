@@ -28,9 +28,12 @@ func runQueueRun(ctx context.Context, args []string) error {
 	var (
 		dataDir  string
 		mismatch string
+		once     bool
 	)
 	fs.StringVar(&dataDir, "data-dir", "", "ODM data directory")
 	fs.StringVar(&mismatch, "on-mismatch", "abort", "resume validator mismatch: abort or restart")
+	// --once exits when the queue is empty instead of waiting forever.
+	fs.BoolVar(&once, "once", false, "exit when no queued/active tasks remain")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -55,9 +58,15 @@ func runQueueRun(ctx context.Context, args []string) error {
 	}
 	defer closeFn()
 
-	fmt.Fprintf(os.Stderr, "odm: queue running (db %s); Ctrl+C to stop\n", dataPath)
-	// wait=true keeps the process alive for newly added tasks until cancelled.
-	err = m.RunQueue(ctx, true)
+	if once {
+		fmt.Fprintf(os.Stderr, "odm: draining queue once (db %s)\n", dataPath)
+		err = m.RunQueue(ctx, false)
+	} else {
+		// wait=true is intentional: this is a long-running worker process.
+		fmt.Fprintf(os.Stderr, "odm: queue idle/running (db %s)\n", dataPath)
+		fmt.Fprintf(os.Stderr, "odm: waiting for queued tasks; press Ctrl+C to stop (or use --once to exit when idle)\n")
+		err = m.RunQueue(ctx, true)
+	}
 	if err == context.Canceled {
 		return nil
 	}
