@@ -54,7 +54,7 @@ Platform support is a release commitment: do not advertise a platform as support
 
 - v0.1: reliable single-stream HTTP/HTTPS `odm` CLI engine and flaky-network test harness.
 - v0.2: persistence, queue, proxy settings, and user decision flows for cancel/remove/resume.
-- v0.3: segmented downloads with safe fallback.
+- v0.3: segmented downloads with safe fallback (engine + CLI; desktop UI later).
 - v0.4: Wails desktop application with queue and settings.
 - v0.5: browser extension and native messaging host.
 - Later: background service; optional Network Access / Tunneling track.

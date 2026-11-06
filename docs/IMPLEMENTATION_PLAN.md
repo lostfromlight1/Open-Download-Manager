@@ -64,12 +64,23 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 3 — Segmented downloads
 
+**Status:** implemented in the engine + CLI/manager settings (desktop UI wiring remains Phase 4).
+
 **Deliverables**
 
-- Range capability verification
-- Segment planner and bounded workers
-- Random-access writes without overlap
-- Safe single-stream fallback
+- Range capability verification (`VerifyRangeSupport` — real HTTP 206 + Content-Range, not `Accept-Ranges`)
+- Segment planner (`PlanSegments`) and bounded workers (`Connections`)
+- Random-access `WriteAt` writes without overlap; preallocated `.part` cleared on failure
+- Safe single-stream fallback when Range is unverified, the file is tiny, or a contiguous `.part` already exists
+- SQLite `segments` table (migration 002) + `download.max_connections` setting
+- CLI: `odm download --connections N`
+
+**Acceptance tests** (under `internal/engine`, `internal/storage`)
+
+- Segmented happy path with multiple Range GETs
+- Fallback when server ignores Range / returns bad Content-Range
+- Planner non-overlap / coverage unit tests
+- Segment row round-trip in SQLite
 
 ## Phase 4 — Desktop MVP
 

@@ -13,7 +13,7 @@ Open-Download-Manager/
 │   └── odm/                     # CLI: download, task, queue, settings
 ├── internal/
 │   ├── appdir/                  # OS data-dir resolution
-│   ├── engine/                  # single-stream download logic (no Wails)
+│   ├── engine/                  # single-stream + segmented download logic (no Wails)
 │   ├── manager/                 # queue, lifecycle, user decisions
 │   ├── netx/                    # HTTP client, proxy modes, timeouts
 │   ├── storage/                 # SQLite + migrations
@@ -48,4 +48,5 @@ Open-Download-Manager/
 - Phase 0′: Go module + Wails desktop shell + React frontend.
 - Phase 1: `odm download` uses `internal/engine` + `internal/netx`.
 - Phase 2: `odm task` / `odm queue` / `odm settings` use `internal/manager` + SQLite.
+- Phase 3: engine verifies Range, plans segments, runs bounded workers; CLI `--connections`; settings `download.max_connections`.
 - Desktop UI still reports downloads unavailable until Phase 4.

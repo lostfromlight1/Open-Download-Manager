@@ -1,7 +1,7 @@
 # Initial Data Model
 
 Phase 2 ships the initial SQLite schema in `internal/storage/migrations/001_init.sql`.
-Segment tables arrive with Phase 3 (multi-connection downloads).
+Phase 3 adds `internal/storage/migrations/002_segments.sql` for multi-connection downloads.
 
 ## DownloadTask
 

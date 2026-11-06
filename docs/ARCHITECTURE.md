@@ -85,7 +85,7 @@ Decide early:
 
 Postpone safely:
 
-- Multi-connection planner details
+- Per-segment crash-resume orchestration in the manager (table exists; engine still clears failed segmented partials)
 - Daemon installer
 - Browser native messaging
 - Concrete tunnel protocols

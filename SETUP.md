@@ -1,6 +1,6 @@
 # Setup guide (new device)
 
-This guide gets ODM running on a clean machine. The project is currently a **Go + Wails v3** foundation: desktop shell + `odm` CLI stub. Downloads are **not** implemented yet.
+This guide gets ODM running on a clean machine. Stack: **Go + Wails v3** desktop shell + `odm` CLI with single-stream and segmented HTTP downloads.
 
 Official Wails install notes: [Wails v3 installation](https://v3.wails.io/getting-started/installation/).
 
@@ -159,16 +159,19 @@ Useful for UI/layout checks. This is not the full desktop app.
 ```bash
 go run ./cmd/odm version
 go run ./cmd/odm download https://example.com/file.bin -o file.bin --proxy off
+go run ./cmd/odm download https://example.com/file.bin -o file.bin --connections 4
 go run ./cmd/odm task add https://example.com/file.bin -o file.bin
 go run ./cmd/odm task list
 go run ./cmd/odm settings show
 ```
 
 - `odm download`: one-shot transfer (no database). Progress on stderr; `saved ...` on stdout.
+- `--connections N`: try up to N parallel Range workers after a verified 206 probe; falls back to single-stream when Range is unsupported or the file is small.
 - `odm task add`: enqueue into SQLite and run until that task finishes (default `--start`).
 - Database default location: OS config dir `/odm` (override with `--data-dir` or `ODM_DATA_DIR`).
 - Cancel/remove file choice: `--files keep|delete`.
 - Resume mismatch policy for `queue run`: `--on-mismatch abort|restart`.
+- `odm settings set download.max_connections 4`: per-download worker cap for the queue.
 
 ### 5.4 Production desktop binary
 
@@ -269,14 +272,14 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 
 - Clone → install → test
 - Desktop shell via `wails3 dev` / `wails3 build`
-- `odm version` and `odm download` (single-stream HTTP/HTTPS, resume, retry, proxy modes)
-- `odm task` / `odm queue` / `odm settings` (SQLite queue, concurrency, keep/delete, mismatch policy, proxy persistence)
+- `odm version` and `odm download` (single-stream + segmented HTTP/HTTPS, resume, retry, proxy modes)
+- `odm task` / `odm queue` / `odm settings` (SQLite queue, concurrency, connections, keep/delete, mismatch policy, proxy persistence)
 
 **Not implemented yet (later phases)**
 
 - Desktop UI download management
 - Interactive TTY prompts (CLI currently uses explicit flags for decisions)
-- Segmented multi-connection downloads
+- Per-segment crash resume wired through the manager (segment rows exist; engine clears failed segmented `.part`s for safety)
 - Proxy settings UI
 - Browser extension
 

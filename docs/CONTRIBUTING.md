@@ -29,7 +29,7 @@ pnpm typecheck
 pnpm test
 ```
 
-Phase 2 provides the CLI download engine plus SQLite-backed queue (`odm task` / `odm queue` / `odm settings`). Desktop UI download wiring and segmented downloads belong in later phases.
+Phase 3 provides segmented multi-connection downloads in the engine (`--connections`, `download.max_connections`) with safe single-stream fallback. Desktop UI download wiring belongs in Phase 4.
 
 ## Pull requests
 
