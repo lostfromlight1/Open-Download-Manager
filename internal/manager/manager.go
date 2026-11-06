@@ -25,16 +25,25 @@ type AddOptions struct {
 	DisplayName string // optional; derived from destination when empty
 }
 
+// Listener receives optional UI-facing updates (desktop). CLI leaves it nil.
+// Implementations must not block for long and must not call back into Manager
+// methods that take m.mu (to avoid deadlocks).
+type Listener interface {
+	OnProgress(taskID string, ev engine.ProgressEvent)
+	OnChanged(taskID string)
+}
+
 // Manager coordinates queued downloads against a Store.
 type Manager struct {
 	store     *storage.Store
 	decisions DecisionHandler
 
-	mu      sync.Mutex
-	running map[string]context.CancelFunc // taskID → cancel for in-flight work
-	active  int                           // count of workers holding a slot
-	wake    chan struct{}                 // signal scheduler to look for work
-	closed  bool
+	mu       sync.Mutex
+	running  map[string]context.CancelFunc // taskID → cancel for in-flight work
+	active   int                           // count of workers holding a slot
+	wake     chan struct{}                 // signal scheduler to look for work
+	closed   bool
+	listener Listener
 }
 
 // New constructs a Manager. decisions may be nil (defaults to keep + abort).
@@ -47,6 +56,31 @@ func New(store *storage.Store, decisions DecisionHandler) *Manager {
 		decisions: decisions,
 		running:   make(map[string]context.CancelFunc),
 		wake:      make(chan struct{}, 1),
+	}
+}
+
+// SetListener attaches an optional progress/change listener (desktop UI).
+func (m *Manager) SetListener(l Listener) {
+	m.mu.Lock()
+	m.listener = l
+	m.mu.Unlock()
+}
+
+func (m *Manager) notifyChanged(taskID string) {
+	m.mu.Lock()
+	l := m.listener
+	m.mu.Unlock()
+	if l != nil {
+		l.OnChanged(taskID)
+	}
+}
+
+func (m *Manager) notifyProgress(taskID string, ev engine.ProgressEvent) {
+	m.mu.Lock()
+	l := m.listener
+	m.mu.Unlock()
+	if l != nil {
+		l.OnProgress(taskID, ev)
 	}
 }
 
@@ -83,6 +117,7 @@ func (m *Manager) Add(ctx context.Context, opts AddOptions) (task.Task, error) {
 	if err := m.store.InsertTask(ctx, t); err != nil {
 		return task.Task{}, err
 	}
+	m.notifyChanged(t.ID)
 	m.nudge()
 	return t, nil
 }
@@ -155,7 +190,11 @@ func (m *Manager) Pause(ctx context.Context, id string) error {
 	}
 	t.State = next
 	t.UpdatedAt = time.Now().UTC()
-	return m.store.UpdateTask(ctx, t)
+	if err := m.store.UpdateTask(ctx, t); err != nil {
+		return err
+	}
+	m.notifyChanged(id)
+	return nil
 }
 
 // Resume moves a paused/failed/cancelled task back to queued.
@@ -173,6 +212,7 @@ func (m *Manager) Resume(ctx context.Context, id string) error {
 		if err := m.store.UpdateTask(ctx, t); err != nil {
 			return err
 		}
+		m.notifyChanged(id)
 		m.nudge()
 		return nil
 	default:
@@ -209,6 +249,7 @@ func (m *Manager) Cancel(ctx context.Context, id string, files FileAction) error
 		_ = os.Remove(t.PartPath())
 		_ = os.Remove(t.DestinationPath)
 	}
+	m.notifyChanged(id)
 	m.nudge()
 	return nil
 }
@@ -236,6 +277,7 @@ func (m *Manager) Remove(ctx context.Context, id string, files FileAction) error
 	if err := m.store.DeleteTask(ctx, id); err != nil {
 		return err
 	}
+	m.notifyChanged(id)
 	m.nudge()
 	return nil
 }
@@ -312,6 +354,7 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 	if err := m.store.UpdateTask(ctx, t); err != nil {
 		return err
 	}
+	m.notifyChanged(id)
 
 	forceRestart, err := m.handleResumeValidators(ctx, &t, cfg)
 	if err != nil {
@@ -323,6 +366,7 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 	if err := m.store.UpdateTask(ctx, t); err != nil {
 		return err
 	}
+	m.notifyChanged(id)
 
 	proxy := netx.ProxyConfig{Mode: cfg.ProxyMode, URL: cfg.ProxyURL}
 	connections := cfg.MaxConnectionsPerDownload
@@ -350,6 +394,7 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 			}
 			cur.UpdatedAt = time.Now().UTC()
 			_ = m.store.UpdateTask(context.Background(), cur)
+			m.notifyProgress(id, ev)
 		},
 	})
 	if err != nil {
@@ -361,6 +406,7 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 					cur.State = task.StatePaused
 					cur.UpdatedAt = time.Now().UTC()
 					_ = m.store.UpdateTask(context.Background(), cur)
+					m.notifyChanged(id)
 				}
 			}
 			return err
@@ -375,6 +421,7 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 	t.State = task.StateFinalizing
 	t.UpdatedAt = time.Now().UTC()
 	_ = m.store.UpdateTask(ctx, t)
+	m.notifyChanged(id)
 
 	t.State = task.StateCompleted
 	t.DownloadedBytes = result.BytesWritten
@@ -385,7 +432,11 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 	t.ErrorCode = ""
 	t.ErrorMessage = ""
 	t.UpdatedAt = time.Now().UTC()
-	return m.store.UpdateTask(ctx, t)
+	if err := m.store.UpdateTask(ctx, t); err != nil {
+		return err
+	}
+	m.notifyChanged(id)
+	return nil
 }
 
 func (m *Manager) handleResumeValidators(ctx context.Context, t *task.Task, cfg storage.Settings) (forceRestart bool, err error) {
@@ -407,7 +458,7 @@ func (m *Manager) handleResumeValidators(ctx context.Context, t *task.Task, cfg 
 		return false, nil
 	}
 
-	action, err := m.decisions.OnResumeMismatch(ValidatorMismatch{
+	action, err := m.decisions.OnResumeMismatch(ctx, ValidatorMismatch{
 		TaskID:          t.ID,
 		DestinationPath: t.DestinationPath,
 		SavedETag:       t.ETag,
@@ -444,6 +495,7 @@ func (m *Manager) failTask(ctx context.Context, t task.Task, code, message strin
 	cur.RetryCount++
 	cur.UpdatedAt = time.Now().UTC()
 	_ = m.store.UpdateTask(ctx, cur)
+	m.notifyChanged(cur.ID)
 	return fmt.Errorf("%s: %s", code, message)
 }
 

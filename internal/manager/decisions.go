@@ -1,6 +1,9 @@
 package manager
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // FileAction is the keep-or-delete choice for cancel/remove.
 type FileAction string
@@ -34,6 +37,18 @@ const (
 	MismatchAbort MismatchAction = "abort"
 )
 
+// ParseMismatchAction accepts UI/CLI-friendly aliases.
+func ParseMismatchAction(s string) (MismatchAction, error) {
+	switch s {
+	case "restart", "restart-download":
+		return MismatchRestart, nil
+	case "abort", "keep", "keep-partial":
+		return MismatchAbort, nil
+	default:
+		return "", fmt.Errorf("mismatch action must be restart or abort, got %q", s)
+	}
+}
+
 // ValidatorMismatch describes a resume conflict for the decision callback.
 type ValidatorMismatch struct {
 	TaskID          string
@@ -47,10 +62,11 @@ type ValidatorMismatch struct {
 // DecisionHandler lets CLI/UI (or tests) answer user-facing questions.
 //
 // Returning an error aborts the operation.
+// OnResumeMismatch receives ctx so desktop UIs can unblock on shutdown.
 type DecisionHandler interface {
 	OnCancelFiles(taskID string) (FileAction, error)
 	OnRemoveFiles(taskID string) (FileAction, error)
-	OnResumeMismatch(info ValidatorMismatch) (MismatchAction, error)
+	OnResumeMismatch(ctx context.Context, info ValidatorMismatch) (MismatchAction, error)
 }
 
 // StaticDecisions is a non-interactive handler used by flags and tests.
@@ -77,7 +93,7 @@ func (s StaticDecisions) OnRemoveFiles(string) (FileAction, error) {
 }
 
 // OnResumeMismatch implements DecisionHandler.
-func (s StaticDecisions) OnResumeMismatch(ValidatorMismatch) (MismatchAction, error) {
+func (s StaticDecisions) OnResumeMismatch(context.Context, ValidatorMismatch) (MismatchAction, error) {
 	if s.Mismatch == "" {
 		return MismatchAbort, nil
 	}
