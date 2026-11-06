@@ -43,16 +43,18 @@ type Behavior string
 // const groups related Behavior values. Exported names start with Uppercase
 // so tests in other packages can write testserver.BehaviorOK.
 const (
-	BehaviorOK              Behavior = "ok"              // normal 200 + full body
-	BehaviorRedirect        Behavior = "redirect"        // 302 to /target
-	BehaviorNotFound        Behavior = "404"             // permanent 404
-	BehaviorServerError     Behavior = "500"             // N times 500, then OK
-	BehaviorTooManyRequests Behavior = "429"             // N times 429, then OK
-	BehaviorSlowFirstByte   Behavior = "slow-first-byte" // sleep before body
-	BehaviorStall           Behavior = "stall"           // headers only, no body
-	BehaviorDropMidBody     Behavior = "drop-mid-body"   // write some bytes, then RST
-	BehaviorNoRange         Behavior = "no-range"        // always 200, ignores Range
-	BehaviorRequireRange    Behavior = "require-range"   // supports resume with 206
+	BehaviorOK              Behavior = "ok"                // normal 200 + full body
+	BehaviorRedirect        Behavior = "redirect"          // 302 to /target
+	BehaviorNotFound        Behavior = "404"               // permanent 404
+	BehaviorServerError     Behavior = "500"               // N times 500, then OK
+	BehaviorTooManyRequests Behavior = "429"               // N times 429, then OK
+	BehaviorSlowFirstByte   Behavior = "slow-first-byte"   // sleep before body
+	BehaviorStall           Behavior = "stall"             // headers only, no body
+	BehaviorDropMidBody     Behavior = "drop-mid-body"     // write some bytes, then RST
+	BehaviorNoRange         Behavior = "no-range"          // always 200, ignores Range
+	BehaviorRequireRange    Behavior = "require-range"     // supports resume with 206
+	BehaviorBadContentRange Behavior = "bad-content-range" // 206 with malformed Content-Range
+	BehaviorWrongSegmentLen Behavior = "wrong-segment-len" // 206 with lying Content-Length
 )
 
 // Options configures the fixture server.
@@ -217,6 +219,12 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	case BehaviorRequireRange:
 		s.handleRange(w, r)
 
+	case BehaviorBadContentRange:
+		s.handleBadContentRange(w, r)
+
+	case BehaviorWrongSegmentLen:
+		s.handleWrongSegmentLen(w, r)
+
 	default:
 		s.handleOK(w, r)
 	}
@@ -264,7 +272,7 @@ func (s *Server) handleNoRange(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(s.opts.Body)
 }
 
-// handleRange implements a minimal bytes=START- responder with HTTP 206.
+// handleRange implements bytes=START- and bytes=START-END responders with HTTP 206.
 func (s *Server) handleRange(w http.ResponseWriter, r *http.Request) {
 	rangeHeader := r.Header.Get("Range")
 	if rangeHeader == "" {
@@ -272,24 +280,94 @@ func (s *Server) handleRange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var start int64
-	// Sscanf parses a formatted string into variables (like C's sscanf).
-	_, err := fmt.Sscanf(rangeHeader, "bytes=%d-", &start)
-	if err != nil || start < 0 || int(start) > len(s.opts.Body) {
+	start, end, ok := parseRangeHeader(rangeHeader, int64(len(s.opts.Body)))
+	if !ok {
 		http.Error(w, "bad range", http.StatusRequestedRangeNotSatisfiable)
 		return
 	}
 
-	// Slice from start to the end: body[start:]
-	body := s.opts.Body[start:]
+	// Slice the requested inclusive range: body[start : end+1]
+	body := s.opts.Body[start : end+1]
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("ETag", s.opts.ETag)
 	w.Header().Set("Accept-Ranges", "bytes")
 	// Content-Range format: bytes START-END/TOTAL
-	w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, len(s.opts.Body)-1, len(s.opts.Body)))
+	w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(s.opts.Body)))
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusPartialContent) // 206
 	_, _ = w.Write(body)
+}
+
+// parseRangeHeader parses "bytes=START-END" or "bytes=START-" against a known size.
+// end is inclusive. ok=false means the range is invalid for this body.
+func parseRangeHeader(h string, size int64) (start, end int64, ok bool) {
+	h = strings.TrimSpace(h)
+	if !strings.HasPrefix(h, "bytes=") {
+		return 0, 0, false
+	}
+	spec := strings.TrimPrefix(h, "bytes=")
+
+	// Closed form: bytes=10-19
+	var s, e int64
+	if _, err := fmt.Sscanf(spec, "%d-%d", &s, &e); err == nil {
+		if s < 0 || e < s || s >= size {
+			return 0, 0, false
+		}
+		if e >= size {
+			e = size - 1
+		}
+		return s, e, true
+	}
+
+	// Open form: bytes=10-
+	if _, err := fmt.Sscanf(spec, "%d-", &s); err != nil || s < 0 || s > size {
+		return 0, 0, false
+	}
+	if size == 0 {
+		return 0, 0, false
+	}
+	if s == size {
+		// Empty suffix at EOF — callers may treat as 416; we reject here.
+		return 0, 0, false
+	}
+	return s, size - 1, true
+}
+
+// handleBadContentRange returns 206 with a deliberately broken Content-Range.
+func (s *Server) handleBadContentRange(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Range") == "" {
+		s.writeFull(w, http.StatusOK)
+		return
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("ETag", s.opts.ETag)
+	w.Header().Set("Accept-Ranges", "bytes")
+	w.Header().Set("Content-Range", "bytes abc-def/xyz")
+	w.Header().Set("Content-Length", "1")
+	w.WriteHeader(http.StatusPartialContent)
+	_, _ = w.Write([]byte("x"))
+}
+
+// handleWrongSegmentLen returns 206 with Content-Range that does not match the body length.
+func (s *Server) handleWrongSegmentLen(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Range") == "" {
+		s.writeFull(w, http.StatusOK)
+		return
+	}
+	start, end, ok := parseRangeHeader(r.Header.Get("Range"), int64(len(s.opts.Body)))
+	if !ok {
+		http.Error(w, "bad range", http.StatusRequestedRangeNotSatisfiable)
+		return
+	}
+	// Lie: claim a longer segment than we actually send.
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("ETag", s.opts.ETag)
+	w.Header().Set("Accept-Ranges", "bytes")
+	w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(s.opts.Body)))
+	w.Header().Set("Content-Length", strconv.Itoa(int(end-start+1)))
+	w.WriteHeader(http.StatusPartialContent)
+	// Send only one byte even when the range asked for more.
+	_, _ = w.Write([]byte("x"))
 }
 
 // writeFull writes the entire Body with the given status code.

@@ -46,13 +46,16 @@ type Result struct {
 	LastModified string // optional validator from the response (may be empty)
 }
 
-// Download performs a single-stream HTTP/HTTPS download to Destination.
+// Download performs an HTTP/HTTPS download to Destination.
 //
-// Design rules for Phase 1:
+// Design rules:
 //   - Stream bytes to disk (never hold the whole file in memory).
 //   - Write to a ".part" file first; rename only after success.
 //   - Retry transient failures with backoff.
-//   - Resume with HTTP Range when a partial file already exists.
+//   - Resume with HTTP Range when a partial file already exists (single-stream).
+//   - Phase 3: when Connections > 1, verify real 206 Range support, plan
+//     non-overlapping segments, and fan out bounded workers. If verification
+//     fails (or a contiguous .part already exists), fall back to single-stream.
 //
 // The first return value is a pointer (*Result). Pointers are nil-able, so we
 // can return (nil, err) on failure. On success we return (&Result{...}, nil).
@@ -101,6 +104,54 @@ func Download(ctx context.Context, opts Options) (*Result, error) {
 		}
 	}
 
+	rawURL := u.String()
+
+	// Segmented path: only when requested AND safe.
+	// An existing contiguous .part is resumed via single-stream Range append —
+	// multi-connection resume needs persisted per-segment offsets (manager DB).
+	if opts.Connections > 1 {
+		existing, err := existingSize(part)
+		if err != nil {
+			return nil, err
+		}
+		if existing == 0 {
+			cap, verr := VerifyRangeSupport(ctx, client, rawURL, opts.UserAgent)
+			if verr != nil && !errors.Is(verr, ErrRangeNotSupported) {
+				// Transport / HTTP errors: honour normal retry via single-stream
+				// only when the probe itself was inconclusive in a retryable way.
+				if !retryable(verr) {
+					return nil, verr
+				}
+			}
+			if verr == nil && cap.Supported && cap.Total >= opts.MinSegmentBytes*2 {
+				result, err := downloadSegmented(ctx, client, opts, rawURL, dest, part, cap)
+				if err == nil {
+					return result, nil
+				}
+				// If segmented mode discovers the server lied mid-transfer, fall back
+				// once after clearing the sparse partial — safer than mixing modes.
+				if errors.Is(err, ErrRangeNotSupported) {
+					_ = os.Remove(part)
+					return downloadSingle(ctx, client, opts, rawURL, dest, part)
+				}
+				return nil, err
+			}
+			// Range not verified / file too small → single-stream below.
+		}
+	}
+
+	return downloadSingle(ctx, client, opts, rawURL, dest, part)
+}
+
+// downloadSingle is the Phase 1 attempt loop (one connection, optional resume).
+func downloadSingle(
+	ctx context.Context,
+	client *http.Client,
+	opts Options,
+	rawURL string,
+	dest string,
+	part string,
+) (*Result, error) {
 	// Attempt loop: try once, then retry up to MaxRetries more times.
 	// Example: MaxRetries=5 → attempts 1..6.
 	//
@@ -112,7 +163,7 @@ func Download(ctx context.Context, opts Options) (*Result, error) {
 			return nil, fmt.Errorf("%w: %v", ErrCancelled, err)
 		}
 
-		result, err := attemptDownload(ctx, client, opts, u.String(), dest, part, attempt)
+		result, err := attemptDownload(ctx, client, opts, rawURL, dest, part, attempt)
 		if err == nil {
 			return result, nil // success — leave the loop
 		}
@@ -199,7 +250,7 @@ func attemptDownload(
 		if existing == 0 {
 			return nil, fmt.Errorf("%w: unexpected 206 without a Range request", ErrHTTPStatus)
 		}
-		start, total, err := parseContentRange(resp.Header.Get("Content-Range"))
+		start, _, total, err := parseContentRange(resp.Header.Get("Content-Range"))
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +265,7 @@ func attemptDownload(
 		// Sometimes this means we already have the whole file.
 		info, statErr := os.Stat(part)
 		if statErr == nil && resp.Header.Get("Content-Range") != "" {
-			_, total, perr := parseContentRange(resp.Header.Get("Content-Range"))
+			_, _, total, perr := parseContentRange(resp.Header.Get("Content-Range"))
 			if perr == nil && total > 0 && info.Size() == total {
 				return finalize(part, dest, total, attempt, resp)
 			}
@@ -246,7 +297,7 @@ func attemptDownload(
 			}
 		}
 	} else if resp.StatusCode == http.StatusPartialContent {
-		_, total, perr := parseContentRange(resp.Header.Get("Content-Range"))
+		_, _, total, perr := parseContentRange(resp.Header.Get("Content-Range"))
 		if perr == nil && total > 0 {
 			expectedTotal = total
 		}
@@ -331,43 +382,50 @@ func existingSize(part string) (int64, error) {
 
 // parseContentRange parses headers like: "bytes 0-99/100" or "bytes 50-99/100".
 //
-// Named return values (start, total, err) are documented in the signature and
-// can be returned bare with `return` (they start as zero values).
-func parseContentRange(h string) (start, total int64, err error) {
+// Returns inclusive start/end and total size. total is -1 when the server sends "*".
+// end is -1 when the range unit is "*" (rare; "bytes */100").
+func parseContentRange(h string) (start, end, total int64, err error) {
 	h = strings.TrimSpace(h)
 	if h == "" {
-		return 0, 0, fmt.Errorf("%w: missing Content-Range", ErrHTTPStatus)
+		return 0, 0, 0, fmt.Errorf("%w: missing Content-Range", ErrHTTPStatus)
 	}
 	if !strings.HasPrefix(h, "bytes ") {
-		return 0, 0, fmt.Errorf("%w: invalid Content-Range %q", ErrHTTPStatus, h)
+		return 0, 0, 0, fmt.Errorf("%w: invalid Content-Range %q", ErrHTTPStatus, h)
 	}
 
 	rest := strings.TrimPrefix(h, "bytes ")
 	parts := strings.Split(rest, "/") // ["0-99", "100"]
 	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("%w: invalid Content-Range %q", ErrHTTPStatus, h)
+		return 0, 0, 0, fmt.Errorf("%w: invalid Content-Range %q", ErrHTTPStatus, h)
 	}
 
 	total = int64(-1) // -1 means "unknown total" (when server sends "*")
 	if parts[1] != "*" {
 		total, err = strconv.ParseInt(parts[1], 10, 64)
 		if err != nil {
-			return 0, 0, fmt.Errorf("%w: invalid Content-Range total: %v", ErrHTTPStatus, err)
+			return 0, 0, 0, fmt.Errorf("%w: invalid Content-Range total: %v", ErrHTTPStatus, err)
 		}
 	}
 	if parts[0] == "*" {
-		return 0, total, nil
+		return 0, -1, total, nil
 	}
 
 	se := strings.Split(parts[0], "-") // ["50", "99"]
 	if len(se) != 2 {
-		return 0, 0, fmt.Errorf("%w: invalid Content-Range range %q", ErrHTTPStatus, h)
+		return 0, 0, 0, fmt.Errorf("%w: invalid Content-Range range %q", ErrHTTPStatus, h)
 	}
 	start, err = strconv.ParseInt(se[0], 10, 64)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%w: invalid Content-Range start: %v", ErrHTTPStatus, err)
+		return 0, 0, 0, fmt.Errorf("%w: invalid Content-Range start: %v", ErrHTTPStatus, err)
 	}
-	return start, total, nil
+	end, err = strconv.ParseInt(se[1], 10, 64)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("%w: invalid Content-Range end: %v", ErrHTTPStatus, err)
+	}
+	if end < start {
+		return 0, 0, 0, fmt.Errorf("%w: Content-Range end %d < start %d", ErrHTTPStatus, end, start)
+	}
+	return start, end, total, nil
 }
 
 // retryable decides whether Download should try again.
@@ -380,7 +438,7 @@ func retryable(err error) bool {
 	if errors.Is(err, ErrCancelled) || errors.Is(err, ErrInvalidURL) || errors.Is(err, ErrInvalidDestination) {
 		return false
 	}
-	if errors.Is(err, ErrResumeUnsupported) {
+	if errors.Is(err, ErrResumeUnsupported) || errors.Is(err, ErrRangeNotSupported) {
 		return false
 	}
 

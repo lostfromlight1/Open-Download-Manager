@@ -37,6 +37,13 @@ var (
 
 	// ErrCancelled means the caller cancelled the download (context cancelled).
 	ErrCancelled = errors.New("download cancelled")
+
+	// ErrRangeNotSupported means we could not verify real HTTP 206 Range behavior.
+	// Callers should fall back to single-stream rather than inventing segments.
+	ErrRangeNotSupported = errors.New("HTTP Range not verified")
+
+	// ErrSegmentOverlap means a planner bug produced overlapping byte ranges.
+	ErrSegmentOverlap = errors.New("segment ranges overlap")
 )
 
 // StatusError is a custom error type that also carries an HTTP status code.

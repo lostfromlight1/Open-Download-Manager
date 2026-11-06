@@ -18,7 +18,7 @@ type ProgressEvent struct {
 	Attempt     int     // 1-based attempt counter
 }
 
-// Options configures a single-stream download.
+// Options configures a download (single-stream or segmented).
 //
 // Passing a struct keeps the Download() signature stable as we add settings.
 type Options struct {
@@ -27,6 +27,15 @@ type Options struct {
 
 	// ForceRestart deletes any existing .part / destination and starts from byte 0.
 	ForceRestart bool
+
+	// Connections is the max parallel HTTP Range workers for one file.
+	// 1 (default) keeps the classic single-stream path.
+	// Values > 1 enable segmented mode only after Range support is verified.
+	Connections int
+
+	// MinSegmentBytes is the smallest segment we bother splitting into.
+	// Tiny files always fall back to single-stream even when Connections > 1.
+	MinSegmentBytes int64
 
 	// Proxy selects system / off / manual proxy behavior.
 	Proxy netx.ProxyConfig
@@ -80,6 +89,14 @@ func (o *Options) withDefaults() Options {
 		// 32 KiB is a common streaming buffer size: small enough for memory,
 		// large enough for decent disk/network throughput.
 		out.BufferSize = 32 * 1024
+	}
+	if out.Connections <= 0 {
+		// Default stays single-stream so existing callers keep prior behavior.
+		out.Connections = 1
+	}
+	if out.MinSegmentBytes <= 0 {
+		// 256 KiB: below this, multi-connection overhead is usually not worth it.
+		out.MinSegmentBytes = 256 * 1024
 	}
 	if out.UserAgent == "" {
 		out.UserAgent = "ODM/0.0.0"
