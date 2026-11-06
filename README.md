@@ -1,8 +1,8 @@
-# Open Download Manager
+# Open Download Manager (ODM)
 
-An open-source, cross-platform Internet Download Manager alternative for Windows, macOS, and Linux.
+An open-source, cross-platform download manager for Windows, macOS, and Linux.
 
-This repository is planned as a desktop download manager with a reusable Rust download engine, a React/TypeScript UI, and browser integration.
+ODM is a desktop download manager with a reusable **Go** download engine, a **React/TypeScript** UI hosted by **Wails v3**, and planned browser integration.
 
 ## Start here
 
@@ -24,4 +24,27 @@ This repository is planned as a desktop download manager with a reusable Rust do
 
 ## Current project status
 
-Planning/documentation baseline. The implementation plan starts with a Rust CLI prototype and local HTTP test server before building the desktop UI.
+Phase 1 CLI engine: `odm download` streams HTTP/HTTPS to disk with resume, retry, stall detection, and proxy modes. The Wails desktop shell still reports downloads unavailable until a later UI phase.
+
+License: MIT.
+
+## Setup and how to run
+
+For a **new device**, follow **[`SETUP.md`](SETUP.md)** (prerequisites, clone, verify, desktop/CLI commands, troubleshooting).
+
+Quick start once tools are installed:
+
+```bash
+git clone https://github.com/lostfromlight1/Open-Download-Manager.git
+cd Open-Download-Manager
+pnpm install
+pnpm build
+go test ./...
+cd apps/desktop && wails3 dev
+```
+
+## Module path
+
+```text
+github.com/lostfromlight1/Open-Download-Manager
+```

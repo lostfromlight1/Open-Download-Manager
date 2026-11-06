@@ -1,16 +1,21 @@
-# Rust
-/target
-**/target
-Cargo.lock.tmp
+# Go
+/bin/
+**/bin/
+*.exe
+*.test
+*.out
+coverage.out
+
+# Wails / Task
+.task
+.wails
+apps/desktop/frontend/dist
+apps/desktop/frontend/bindings
 
 # Node
 node_modules
 dist
 .vite
-
-# Tauri
-src-tauri/target
-src-tauri/gen/schemas
 
 # Local data and secrets
 .env
@@ -27,8 +32,6 @@ Thumbs.db
 .idea
 .vscode
 
-.cursor
-docs
-AGENTS.md
-CONTRIBUTING.md
-
+# Package manager and test caches
+.pnpm-store
+coverage
