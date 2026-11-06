@@ -1,0 +1,148 @@
+package storage
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/lostfromlight1/Open-Download-Manager/internal/netx"
+)
+
+// Settings keys stored in the settings table.
+const (
+	SettingProxyMode         = "proxy.mode"       // system | off | manual
+	SettingProxyURL          = "proxy.url"        // used when mode=manual
+	SettingMaxActive         = "queue.max_active" // concurrent downloads
+	SettingMaxRetries        = "download.max_retries"
+	SettingConnectTimeoutSec = "download.connect_timeout_sec"
+	SettingStallTimeoutSec   = "download.stall_timeout_sec"
+	SettingDownloadDir       = "download.directory" // default folder hint
+)
+
+// Settings is the typed view of persisted configuration.
+type Settings struct {
+	ProxyMode          netx.ProxyMode
+	ProxyURL           string
+	MaxActiveDownloads int
+	MaxRetries         int
+	ConnectTimeoutSec  int
+	StallTimeoutSec    int
+	DownloadDirectory  string
+}
+
+// DefaultSettings returns Phase 2 defaults.
+func DefaultSettings() Settings {
+	return Settings{
+		ProxyMode:          netx.ProxySystem,
+		ProxyURL:           "",
+		MaxActiveDownloads: 2,
+		MaxRetries:         5,
+		ConnectTimeoutSec:  30,
+		StallTimeoutSec:    30,
+		DownloadDirectory:  "",
+	}
+}
+
+// GetSettings loads settings, filling defaults for missing keys.
+func (s *Store) GetSettings(ctx context.Context) (Settings, error) {
+	out := DefaultSettings()
+
+	rows, err := s.db.QueryContext(ctx, `SELECT key, value FROM settings`)
+	if err != nil {
+		return out, fmt.Errorf("load settings: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return out, err
+		}
+		switch k {
+		case SettingProxyMode:
+			out.ProxyMode = netx.ProxyMode(strings.TrimSpace(v))
+		case SettingProxyURL:
+			out.ProxyURL = v
+		case SettingMaxActive:
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				out.MaxActiveDownloads = n
+			}
+		case SettingMaxRetries:
+			if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+				out.MaxRetries = n
+			}
+		case SettingConnectTimeoutSec:
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				out.ConnectTimeoutSec = n
+			}
+		case SettingStallTimeoutSec:
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				out.StallTimeoutSec = n
+			}
+		case SettingDownloadDir:
+			out.DownloadDirectory = v
+		}
+	}
+	return out, rows.Err()
+}
+
+// SaveSettings writes all known settings keys in one transaction.
+func (s *Store) SaveSettings(ctx context.Context, cfg Settings) error {
+	if cfg.MaxActiveDownloads <= 0 {
+		return fmt.Errorf("max active downloads must be > 0")
+	}
+	if cfg.ProxyMode == netx.ProxyManual && strings.TrimSpace(cfg.ProxyURL) == "" {
+		return fmt.Errorf("manual proxy requires a URL")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	pairs := map[string]string{
+		SettingProxyMode:         string(cfg.ProxyMode),
+		SettingProxyURL:          cfg.ProxyURL,
+		SettingMaxActive:         strconv.Itoa(cfg.MaxActiveDownloads),
+		SettingMaxRetries:        strconv.Itoa(cfg.MaxRetries),
+		SettingConnectTimeoutSec: strconv.Itoa(cfg.ConnectTimeoutSec),
+		SettingStallTimeoutSec:   strconv.Itoa(cfg.StallTimeoutSec),
+		SettingDownloadDir:       cfg.DownloadDirectory,
+	}
+	for k, v := range pairs {
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO settings(key, value) VALUES(?, ?)
+ON CONFLICT(key) DO UPDATE SET value=excluded.value`, k, v); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("save setting %s: %w", k, err)
+		}
+	}
+	return tx.Commit()
+}
+
+// SetSetting upserts a single key (used by CLI `settings set`).
+func (s *Store) SetSetting(ctx context.Context, key, value string) error {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return fmt.Errorf("settings key must not be empty")
+	}
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO settings(key, value) VALUES(?, ?)
+ON CONFLICT(key) DO UPDATE SET value=excluded.value`, key, value)
+	if err != nil {
+		return fmt.Errorf("set setting: %w", err)
+	}
+	return nil
+}
+
+// GetSetting returns one raw value or "" if missing.
+func (s *Store) GetSetting(ctx context.Context, key string) (string, error) {
+	var v string
+	err := s.db.QueryRowContext(ctx, `SELECT value FROM settings WHERE key=?`, key).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return v, err
+}
