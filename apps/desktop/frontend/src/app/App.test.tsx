@@ -27,6 +27,9 @@ function mockApi(partial: Partial<DesktopApi> = {}): DesktopApi {
       proxyURL: "",
       theme: "system",
       notifyOnComplete: false,
+      browserIntegrationEnabled: false,
+      chromeExtensionId: "",
+      browserHostRegistered: false,
     }),
     getDownload: async () => {
       throw new Error("not used");

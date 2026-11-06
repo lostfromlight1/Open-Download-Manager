@@ -55,6 +55,9 @@ export interface SettingsDTO {
   proxyURL: string;
   theme: string;
   notifyOnComplete: boolean;
+  browserIntegrationEnabled: boolean;
+  chromeExtensionId: string;
+  browserHostRegistered: boolean;
 }
 
 export type FilterTab =

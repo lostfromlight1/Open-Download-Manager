@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lostfromlight1/Open-Download-Manager/internal/netx"
@@ -41,6 +42,9 @@ type SettingsDTO struct {
 	ProxyURL                  string `json:"proxyURL"`
 	Theme                     string `json:"theme"`            // system | light | dark
 	NotifyOnComplete          bool   `json:"notifyOnComplete"` // opt-in completion toasts
+	BrowserIntegrationEnabled bool   `json:"browserIntegrationEnabled"`
+	ChromeExtensionID         string `json:"chromeExtensionId"`
+	BrowserHostRegistered     bool   `json:"browserHostRegistered"` // status only; not persisted
 }
 
 // ProgressEventDTO is emitted on odm:download-progress.
@@ -99,6 +103,8 @@ func settingsToDTO(s storage.Settings) SettingsDTO {
 		ProxyURL:                  s.ProxyURL,
 		Theme:                     theme,
 		NotifyOnComplete:          s.NotifyOnComplete,
+		BrowserIntegrationEnabled: s.BrowserIntegrationEnabled,
+		ChromeExtensionID:         s.ChromeExtensionID,
 	}
 }
 
@@ -110,6 +116,8 @@ func settingsFromDTO(d SettingsDTO) (storage.Settings, error) {
 	cfg.ProxyURL = d.ProxyURL
 	cfg.Theme = d.Theme
 	cfg.NotifyOnComplete = d.NotifyOnComplete
+	cfg.BrowserIntegrationEnabled = d.BrowserIntegrationEnabled
+	cfg.ChromeExtensionID = strings.TrimSpace(d.ChromeExtensionID)
 
 	switch netx.ProxyMode(d.ProxyMode) {
 	case netx.ProxySystem, "":

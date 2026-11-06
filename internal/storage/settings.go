@@ -13,16 +13,18 @@ import (
 
 // Settings keys stored in the settings table.
 const (
-	SettingProxyMode         = "proxy.mode"               // system | off | manual
-	SettingProxyURL          = "proxy.url"                // used when mode=manual
-	SettingMaxActive         = "queue.max_active"         // concurrent downloads
-	SettingMaxConnections    = "download.max_connections" // per-download Range workers
-	SettingMaxRetries        = "download.max_retries"
-	SettingConnectTimeoutSec = "download.connect_timeout_sec"
-	SettingStallTimeoutSec   = "download.stall_timeout_sec"
-	SettingDownloadDir       = "download.directory"    // default folder hint
-	SettingTheme             = "ui.theme"              // system | light | dark
-	SettingNotifyComplete    = "ui.notify_on_complete" // true | false
+	SettingProxyMode          = "proxy.mode"               // system | off | manual
+	SettingProxyURL           = "proxy.url"                // used when mode=manual
+	SettingMaxActive          = "queue.max_active"         // concurrent downloads
+	SettingMaxConnections     = "download.max_connections" // per-download Range workers
+	SettingMaxRetries         = "download.max_retries"
+	SettingConnectTimeoutSec  = "download.connect_timeout_sec"
+	SettingStallTimeoutSec    = "download.stall_timeout_sec"
+	SettingDownloadDir        = "download.directory"          // default folder hint
+	SettingTheme              = "ui.theme"                    // system | light | dark
+	SettingNotifyComplete     = "ui.notify_on_complete"       // true | false
+	SettingBrowserIntegration = "browser.integration_enabled" // true | false
+	SettingChromeExtensionID  = "browser.chrome_extension_id" // for NM host allows_origins
 )
 
 // Settings is the typed view of persisted configuration.
@@ -37,6 +39,8 @@ type Settings struct {
 	DownloadDirectory         string
 	Theme                     string // system | light | dark
 	NotifyOnComplete          bool
+	BrowserIntegrationEnabled bool
+	ChromeExtensionID         string // optional; used when registering Chrome NM host
 }
 
 // DefaultSettings returns Phase 2/3 defaults.
@@ -52,6 +56,8 @@ func DefaultSettings() Settings {
 		DownloadDirectory:         "",
 		Theme:                     "system",
 		NotifyOnComplete:          false,
+		BrowserIntegrationEnabled: false,
+		ChromeExtensionID:         "",
 	}
 }
 
@@ -104,6 +110,10 @@ func (s *Store) GetSettings(ctx context.Context) (Settings, error) {
 			}
 		case SettingNotifyComplete:
 			out.NotifyOnComplete = strings.EqualFold(strings.TrimSpace(v), "true") || v == "1"
+		case SettingBrowserIntegration:
+			out.BrowserIntegrationEnabled = strings.EqualFold(strings.TrimSpace(v), "true") || v == "1"
+		case SettingChromeExtensionID:
+			out.ChromeExtensionID = strings.TrimSpace(v)
 		}
 	}
 	return out, rows.Err()
@@ -135,16 +145,18 @@ func (s *Store) SaveSettings(ctx context.Context, cfg Settings) error {
 		return err
 	}
 	pairs := map[string]string{
-		SettingProxyMode:         string(cfg.ProxyMode),
-		SettingProxyURL:          cfg.ProxyURL,
-		SettingMaxActive:         strconv.Itoa(cfg.MaxActiveDownloads),
-		SettingMaxConnections:    strconv.Itoa(cfg.MaxConnectionsPerDownload),
-		SettingMaxRetries:        strconv.Itoa(cfg.MaxRetries),
-		SettingConnectTimeoutSec: strconv.Itoa(cfg.ConnectTimeoutSec),
-		SettingStallTimeoutSec:   strconv.Itoa(cfg.StallTimeoutSec),
-		SettingDownloadDir:       cfg.DownloadDirectory,
-		SettingTheme:             theme,
-		SettingNotifyComplete:    strconv.FormatBool(cfg.NotifyOnComplete),
+		SettingProxyMode:          string(cfg.ProxyMode),
+		SettingProxyURL:           cfg.ProxyURL,
+		SettingMaxActive:          strconv.Itoa(cfg.MaxActiveDownloads),
+		SettingMaxConnections:     strconv.Itoa(cfg.MaxConnectionsPerDownload),
+		SettingMaxRetries:         strconv.Itoa(cfg.MaxRetries),
+		SettingConnectTimeoutSec:  strconv.Itoa(cfg.ConnectTimeoutSec),
+		SettingStallTimeoutSec:    strconv.Itoa(cfg.StallTimeoutSec),
+		SettingDownloadDir:        cfg.DownloadDirectory,
+		SettingTheme:              theme,
+		SettingNotifyComplete:     strconv.FormatBool(cfg.NotifyOnComplete),
+		SettingBrowserIntegration: strconv.FormatBool(cfg.BrowserIntegrationEnabled),
+		SettingChromeExtensionID:  strings.TrimSpace(cfg.ChromeExtensionID),
 	}
 	for k, v := range pairs {
 		if _, err := tx.ExecContext(ctx, `

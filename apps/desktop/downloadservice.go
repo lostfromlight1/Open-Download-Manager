@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/lostfromlight1/Open-Download-Manager/internal/browserhost"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/engine"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/manager"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/storage"
@@ -18,14 +20,17 @@ import (
 //
 // It must not implement transfer logic. React calls these methods via bindings.
 type DownloadService struct {
-	mu        sync.Mutex
-	mgr       *manager.Manager
-	store     *storage.Store
-	decisions *InteractiveDecisions
-	sink      EventSink
-	dataDir   string
-	ready     bool
-	initErr   string
+	mu            sync.Mutex
+	mgr           *manager.Manager
+	store         *storage.Store
+	decisions     *InteractiveDecisions
+	sink          EventSink
+	dataDir       string
+	ready         bool
+	initErr       string
+	knownTaskIDs  map[string]struct{}
+	reconcileStop chan struct{}
+	reconcileOnce sync.Once
 }
 
 // NewDownloadService constructs an unready service (tests / late bind).
@@ -47,6 +52,8 @@ func (s *DownloadService) bind(mgr *manager.Manager, store *storage.Store, decis
 	s.initErr = ""
 	if s.ready {
 		mgr.SetListener(managerListener{svc: s})
+		s.knownTaskIDs = map[string]struct{}{}
+		s.startReconcileLocked()
 	}
 }
 
@@ -198,7 +205,9 @@ func (s *DownloadService) GetSettings() (SettingsDTO, error) {
 	if err != nil {
 		return SettingsDTO{}, err
 	}
-	return settingsToDTO(cfg), nil
+	dto := settingsToDTO(cfg)
+	dto.BrowserHostRegistered = browserhost.IsInstalled()
+	return dto, nil
 }
 
 // UpdateSettings validates and persists settings.
@@ -221,10 +230,27 @@ func (s *DownloadService) UpdateSettings(dto SettingsDTO) (SettingsDTO, error) {
 	if cfg.Theme == "" {
 		cfg.Theme = existing.Theme
 	}
+	if cfg.BrowserIntegrationEnabled && strings.TrimSpace(cfg.DownloadDirectory) == "" {
+		return SettingsDTO{}, fmt.Errorf("set a default download folder before enabling browser integration")
+	}
 	if err := s.mgr.SaveSettings(context.Background(), cfg); err != nil {
 		return SettingsDTO{}, err
 	}
-	return settingsToDTO(cfg), nil
+	if cfg.BrowserIntegrationEnabled {
+		if _, err := browserhost.Install(browserhost.InstallOptions{
+			ChromeExtensionID: cfg.ChromeExtensionID,
+		}); err != nil {
+			// Persist succeeded; surface registration failure to the UI.
+			out := settingsToDTO(cfg)
+			out.BrowserHostRegistered = false
+			return out, fmt.Errorf("settings saved, but native host registration failed: %w", err)
+		}
+	} else if existing.BrowserIntegrationEnabled {
+		_ = browserhost.Uninstall()
+	}
+	out := settingsToDTO(cfg)
+	out.BrowserHostRegistered = browserhost.IsInstalled()
+	return out, nil
 }
 
 // ResolveDecision answers a pending resume-mismatch prompt.
@@ -330,15 +356,100 @@ func (l managerListener) OnChanged(taskID string) {
 	s.mu.Lock()
 	sink := s.sink
 	mgr := s.mgr
+	if s.knownTaskIDs != nil {
+		s.knownTaskIDs[taskID] = struct{}{}
+	}
 	s.mu.Unlock()
 	if sink == nil || mgr == nil {
 		return
 	}
 	cur, err := mgr.Get(context.Background(), taskID)
 	if err != nil {
+		s.mu.Lock()
+		if s.knownTaskIDs != nil {
+			delete(s.knownTaskIDs, taskID)
+		}
+		s.mu.Unlock()
 		sink.Emit(EventDownloadChanged, ChangedEventDTO{TaskID: taskID, Download: nil})
 		return
 	}
 	dto := taskToDTO(cur)
 	sink.Emit(EventDownloadChanged, ChangedEventDTO{TaskID: taskID, Download: &dto})
+}
+
+// startReconcileLocked emits download-changed for tasks inserted by odm-nmhost
+// (a different Manager process), which the desktop UI would otherwise miss.
+// Caller must hold s.mu.
+func (s *DownloadService) startReconcileLocked() {
+	s.reconcileOnce.Do(func() {
+		s.reconcileStop = make(chan struct{})
+		stop := s.reconcileStop
+		go s.reconcileLoop(stop)
+	})
+}
+
+func (s *DownloadService) reconcileLoop(stop <-chan struct{}) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			s.reconcileOnceTick()
+		}
+	}
+}
+
+func (s *DownloadService) reconcileOnceTick() {
+	s.mu.Lock()
+	mgr := s.mgr
+	sink := s.sink
+	ready := s.ready
+	s.mu.Unlock()
+	if !ready || mgr == nil || sink == nil {
+		return
+	}
+	tasks, err := mgr.List(context.Background())
+	if err != nil {
+		return
+	}
+
+	s.mu.Lock()
+	if s.knownTaskIDs == nil {
+		s.knownTaskIDs = map[string]struct{}{}
+	}
+	// First pass: seed without emitting so startup does not spam the UI.
+	if len(s.knownTaskIDs) == 0 && len(tasks) > 0 {
+		for _, t := range tasks {
+			s.knownTaskIDs[t.ID] = struct{}{}
+		}
+		s.mu.Unlock()
+		return
+	}
+	var added []task.Task
+	var removed []string
+	seen := make(map[string]struct{}, len(tasks))
+	for _, t := range tasks {
+		seen[t.ID] = struct{}{}
+		if _, ok := s.knownTaskIDs[t.ID]; !ok {
+			s.knownTaskIDs[t.ID] = struct{}{}
+			added = append(added, t)
+		}
+	}
+	for id := range s.knownTaskIDs {
+		if _, ok := seen[id]; !ok {
+			delete(s.knownTaskIDs, id)
+			removed = append(removed, id)
+		}
+	}
+	s.mu.Unlock()
+
+	for _, t := range added {
+		dto := taskToDTO(t)
+		sink.Emit(EventDownloadChanged, ChangedEventDTO{TaskID: t.ID, Download: &dto})
+	}
+	for _, id := range removed {
+		sink.Emit(EventDownloadChanged, ChangedEventDTO{TaskID: id, Download: nil})
+	}
 }

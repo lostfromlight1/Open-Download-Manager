@@ -184,6 +184,52 @@ export function SettingsPage({ onBack, onSaved }: Props) {
           </fieldset>
 
           <fieldset className="space-y-3">
+            <legend className="text-sm font-semibold">
+              Browser integration
+            </legend>
+            <p className="text-sm text-[var(--color-text-muted)]">
+              Opt-in only. The extension may send http(s) download links to ODM
+              via native messaging. It does not read browsing history or page
+              content. A default download folder is required when enabled.
+            </p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.browserIntegrationEnabled}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    browserIntegrationEnabled: e.target.checked,
+                  })
+                }
+              />
+              Enable browser integration
+            </label>
+            <label className="block text-sm">
+              Chrome extension ID (from chrome://extensions)
+              <input
+                className="mt-1 w-full rounded-md border border-[var(--color-border)] px-3 py-2 font-mono text-sm"
+                value={form.chromeExtensionId}
+                onChange={(e) =>
+                  setForm({ ...form, chromeExtensionId: e.target.value })
+                }
+                placeholder="abcdefghijklmnopqrstuvwxyzabcdef"
+                disabled={!form.browserIntegrationEnabled}
+              />
+            </label>
+            {form.browserHostRegistered ? (
+              <p className="text-sm text-[var(--color-success)]">
+                Native messaging host is registered for this user.
+              </p>
+            ) : form.browserIntegrationEnabled ? (
+              <p className="text-sm text-[var(--color-text-muted)]">
+                Host registration runs when you save with integration enabled
+                and odm-nmhost on PATH (or next to the desktop app).
+              </p>
+            ) : null}
+          </fieldset>
+
+          <fieldset className="space-y-3">
             <legend className="text-sm font-semibold">Network</legend>
             <div className="space-y-2 text-sm">
               {(

@@ -57,6 +57,8 @@ func runSettingsShow(ctx context.Context, args []string) error {
 	fmt.Fprintf(os.Stdout, "download.directory=%s\n", cfg.DownloadDirectory)
 	fmt.Fprintf(os.Stdout, "ui.theme=%s\n", cfg.Theme)
 	fmt.Fprintf(os.Stdout, "ui.notify_on_complete=%v\n", cfg.NotifyOnComplete)
+	fmt.Fprintf(os.Stdout, "browser.integration_enabled=%v\n", cfg.BrowserIntegrationEnabled)
+	fmt.Fprintf(os.Stdout, "browser.chrome_extension_id=%s\n", cfg.ChromeExtensionID)
 	return nil
 }
 
@@ -168,6 +170,19 @@ func applySetting(cfg *storage.Settings, key, value string) error {
 		default:
 			return fmt.Errorf("notify_on_complete must be true or false")
 		}
+		return nil
+	case storage.SettingBrowserIntegration, "browser-integration", "browser":
+		switch strings.ToLower(strings.TrimSpace(value)) {
+		case "true", "1", "yes", "on":
+			cfg.BrowserIntegrationEnabled = true
+		case "false", "0", "no", "off":
+			cfg.BrowserIntegrationEnabled = false
+		default:
+			return fmt.Errorf("browser.integration_enabled must be true or false")
+		}
+		return nil
+	case storage.SettingChromeExtensionID, "chrome-extension-id":
+		cfg.ChromeExtensionID = strings.TrimSpace(value)
 		return nil
 	default:
 		return fmt.Errorf("unknown settings key %q", key)

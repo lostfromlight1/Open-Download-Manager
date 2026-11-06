@@ -48,6 +48,8 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	cfg := storage.DefaultSettings()
 	cfg.ProxyMode = netx.ProxyOff
 	cfg.MaxActiveDownloads = 3
+	cfg.BrowserIntegrationEnabled = true
+	cfg.ChromeExtensionID = "abcdefghijklmnopqrstuvwxyzabcdef"
 	if err := store.SaveSettings(ctx, cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -57,6 +59,9 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	}
 	if loaded.ProxyMode != netx.ProxyOff || loaded.MaxActiveDownloads != 3 {
 		t.Fatalf("settings mismatch: %#v", loaded)
+	}
+	if !loaded.BrowserIntegrationEnabled || loaded.ChromeExtensionID != cfg.ChromeExtensionID {
+		t.Fatalf("browser settings mismatch: %#v", loaded)
 	}
 
 	segs := []storage.Segment{
