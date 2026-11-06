@@ -2,18 +2,21 @@ package main
 
 import "testing"
 
-// TestShellServiceReportsUnavailableDownloads documents Phase 0/1 desktop status:
-// the Wails shell is up, but download management is not wired into the UI yet.
-func TestShellServiceReportsUnavailableDownloads(t *testing.T) {
-	service := NewShellService()
+func TestShellServiceReportsReadyWhenBound(t *testing.T) {
+	svc := NewDownloadService()
+	shell := NewShellService(svc)
+	if shell.DownloadsAvailable() {
+		t.Fatal("expected unavailable before bind")
+	}
+	if shell.ProductName() != "Open Download Manager" {
+		t.Fatalf("name=%q", shell.ProductName())
+	}
 
-	if got := service.ProductName(); got != "Open Download Manager" {
-		t.Fatalf("ProductName() = %q", got)
+	svc.ready = true
+	if !shell.DownloadsAvailable() {
+		t.Fatal("expected available when service ready")
 	}
-	if service.DownloadsAvailable() {
-		t.Fatal("DownloadsAvailable() = true, want false")
-	}
-	if got := service.StatusMessage(); got != "Download management is not available in this build." {
-		t.Fatalf("StatusMessage() = %q", got)
+	if shell.StatusMessage() != "Download manager ready" {
+		t.Fatalf("status=%q", shell.StatusMessage())
 	}
 }

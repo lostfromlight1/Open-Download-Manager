@@ -1,17 +1,13 @@
 package main
 
-// ShellService exposes a minimal desktop status API to the React frontend.
-//
-// Wails can call exported methods on this struct from TypeScript.
-// Phase 1 added the Go download engine for the CLI; the desktop UI still does
-// not wire download actions yet, so DownloadsAvailable stays false.
-type ShellService struct{}
+// ShellService exposes product metadata to the React frontend.
+type ShellService struct {
+	downloads *DownloadService
+}
 
 // NewShellService constructs a ShellService.
-//
-// Returning a pointer (*ShellService) is common so methods share one instance.
-func NewShellService() *ShellService {
-	return &ShellService{}
+func NewShellService(downloads *DownloadService) *ShellService {
+	return &ShellService{downloads: downloads}
 }
 
 // ProductName returns the user-facing product name.
@@ -19,12 +15,18 @@ func (s *ShellService) ProductName() string {
 	return "Open Download Manager"
 }
 
-// DownloadsAvailable reports whether download management is implemented in the UI.
+// DownloadsAvailable reports whether download management is ready.
 func (s *ShellService) DownloadsAvailable() bool {
-	return false
+	if s.downloads == nil {
+		return false
+	}
+	return s.downloads.Ready()
 }
 
 // StatusMessage is a short human-readable shell status for the UI.
 func (s *ShellService) StatusMessage() string {
-	return "Download management is not available in this build."
+	if s.downloads == nil {
+		return "Download manager not initialized"
+	}
+	return s.downloads.StatusMessage()
 }
