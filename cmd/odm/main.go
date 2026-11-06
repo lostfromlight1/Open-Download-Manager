@@ -71,6 +71,24 @@ func main() {
 			os.Exit(exitCode(err))
 		}
 
+	case "task":
+		if err := runTask(ctx, os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "odm: %v\n", err)
+			os.Exit(exitCode(err))
+		}
+
+	case "queue":
+		if err := runQueue(ctx, os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "odm: %v\n", err)
+			os.Exit(exitCode(err))
+		}
+
+	case "settings":
+		if err := runSettings(ctx, os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "odm: %v\n", err)
+			os.Exit(exitCode(err))
+		}
+
 	default:
 		// %q prints the string in quoted form, useful for debugging user input.
 		fmt.Fprintf(os.Stderr, "odm: unknown command %q\n\n", os.Args[1])
@@ -93,22 +111,27 @@ func printUsage(w *os.File) {
 
 Usage:
   odm version
-  odm download <url> [flags]
+  odm download <url> [flags]          One-shot download (no DB)
+  odm task add <url> [flags]          Enqueue + run via SQLite queue
+  odm task list
+  odm task pause|resume|cancel|remove <id>
+  odm queue run                       Process queue until Ctrl+C
+  odm settings show|set <key> <value>
 
-Flags for download:
-  -o, --output <path>     Final file path (default: filename from URL)
-      --dir <dir>         Directory for the file when --output is omitted
-      --proxy <mode|url>  system (default), off, or http(s)://host:port
-      --force-restart     Delete partial/final file and start from byte 0
-      --max-retries <n>   Retries after the first attempt (default 5)
-      --stall-timeout <d> Max idle time between bytes (default 30s)
-      --connect-timeout <d>
-                          TCP connect timeout (default 30s)
+Shared flags:
+      --data-dir <dir>    Database location (default: OS config dir/odm)
+
+Download / task add flags:
+  -o, --output <path>     Final file path
+      --dir <dir>         Directory when --output is omitted
+      --proxy <mode|url>  (one-shot download only) system|off|URL
+      --files keep|delete (cancel/remove) whether to delete files
 
 Examples:
-  odm download https://example.com/file.bin -o file.bin
-  odm download -o file.bin --proxy off https://example.com/file.bin
-  odm download https://example.com/file.bin --proxy http://127.0.0.1:8080
+  odm download https://example.com/file.bin -o file.bin --proxy off
+  odm task add https://example.com/file.bin -o D:\\Downloads\\file.bin
+  odm settings set queue.max_active 2
+  odm queue run --on-mismatch abort
 `)
 }
 
