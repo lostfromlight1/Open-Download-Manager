@@ -44,7 +44,9 @@ Support from early phases:
 
 ### Database
 
-SQLite stores task metadata, segment metadata, queue state, and schema version. Do not store secrets in plaintext.
+SQLite stores task metadata, queue state, settings, and schema version. Do not store secrets in plaintext.
+
+Driver: `modernc.org/sqlite` (pure Go, no CGO) so Windows/macOS/Linux cross-builds stay simple without a C toolchain. Schema changes go through versioned files under `internal/storage/migrations/`.
 
 ### Desktop IPC
 

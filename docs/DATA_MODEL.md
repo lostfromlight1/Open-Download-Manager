@@ -1,6 +1,7 @@
 # Initial Data Model
 
-This is a conceptual starting point. Finalize schema details during the persistence phase and use versioned migrations.
+Phase 2 ships the initial SQLite schema in `internal/storage/migrations/001_init.sql`.
+Segment tables arrive with Phase 3 (multi-connection downloads).
 
 ## DownloadTask
 

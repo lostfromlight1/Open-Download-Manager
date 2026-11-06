@@ -24,7 +24,7 @@ ODM is a desktop download manager with a reusable **Go** download engine, a **Re
 
 ## Current project status
 
-Phase 1 CLI engine: `odm download` streams HTTP/HTTPS to disk with resume, retry, stall detection, and proxy modes. The Wails desktop shell still reports downloads unavailable until a later UI phase.
+Phase 2 CLI manager: `odm download` for one-shot transfers; `odm task` / `odm queue` / `odm settings` for SQLite-backed queue, cancel/remove keep-or-delete choices, resume-mismatch decisions, and persisted proxy settings. The Wails desktop shell still reports downloads unavailable until a later UI phase.
 
 License: MIT.
 

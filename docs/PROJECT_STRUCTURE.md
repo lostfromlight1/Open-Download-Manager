@@ -10,13 +10,17 @@ Open-Download-Manager/
 │       ├── build/               # Wails packaging assets
 │       └── Taskfile.yml
 ├── cmd/
-│   └── odm/                     # CLI: version + download
+│   └── odm/                     # CLI: download, task, queue, settings
 ├── internal/
+│   ├── appdir/                  # OS data-dir resolution
 │   ├── engine/                  # single-stream download logic (no Wails)
+│   ├── manager/                 # queue, lifecycle, user decisions
 │   ├── netx/                    # HTTP client, proxy modes, timeouts
+│   ├── storage/                 # SQLite + migrations
+│   ├── task/                    # task model + state machine
 │   ├── testserver/              # deterministic flaky HTTP fixtures
 │   └── version/                 # shared version metadata
-│   # future: manager, storage, access
+│   # future: access (tunneling track)
 ├── docs/
 ├── .cursor/rules/
 ├── .github/workflows/
@@ -35,11 +39,13 @@ Open-Download-Manager/
 
 - Engine code under `internal/` must not import Wails.
 - `apps/desktop` wires UI to Go services; it must not become the download engine.
-- `cmd/odm` stays a thin CLI over `internal/engine`.
+- `cmd/odm` stays a thin CLI over `internal/engine` and `internal/manager`.
 - Create additional `internal/*` packages when a phase needs them; do not invent empty packages early.
 - Browser extension arrives in a later phase under `apps/browser-extension`.
 
 ## Current layout notes
 
 - Phase 0′: Go module + Wails desktop shell + React frontend.
-- Phase 1: `odm download` uses `internal/engine` + `internal/netx`; desktop UI still reports downloads unavailable.
+- Phase 1: `odm download` uses `internal/engine` + `internal/netx`.
+- Phase 2: `odm task` / `odm queue` / `odm settings` use `internal/manager` + SQLite.
+- Desktop UI still reports downloads unavailable until Phase 4.

@@ -47,6 +47,9 @@ Required server behaviors:
 - `go test ./...` requires `apps/desktop/frontend/dist` to exist because the desktop package embeds it.
 - `internal/engine` integration tests use `internal/testserver` for OK, redirect, 404, 429, 5xx, stall, mid-body drop, and no-Range behaviors.
 - `internal/netx` unit tests cover proxy mode parsing and client construction.
+- `internal/task` unit tests cover allowed/illegal state transitions.
+- `internal/storage` tests round-trip tasks/settings through SQLite migrations.
+- `internal/manager` tests cover queue completion, cancel+delete files, resume mismatch abort, and remove+keep files.
 
 ## Quality gates
 

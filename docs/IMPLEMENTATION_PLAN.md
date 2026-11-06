@@ -51,14 +51,16 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 2 — Persistence, queue, user decisions
 
+**Status:** implemented for the `odm` CLI manager (desktop UI wiring remains Phase 4).
+
 **Deliverables**
 
-- Task model and explicit state machine
-- SQLite schema and migrations
-- Queue and concurrency limits
-- Cancel/remove confirmation choices (keep/delete files)
-- Resume mismatch asks the user
-- Full proxy settings persistence
+- `internal/task` explicit state machine
+- `internal/storage` SQLite schema + versioned SQL migrations
+- `internal/manager` queue with `queue.max_active` concurrency
+- Cancel/remove `--files keep|delete` choices
+- Resume validator mismatch via `--on-mismatch abort|restart`
+- Persisted proxy + download settings (`odm settings`)
 
 ## Phase 3 — Segmented downloads
 
