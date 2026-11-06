@@ -1,7 +1,7 @@
 {
   "name": "open-download-manager",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.4.0",
   "packageManager": "pnpm@10.20.0",
   "engines": {
     "node": ">=22"

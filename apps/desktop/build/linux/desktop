@@ -1,13 +1,11 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A odm-desktop application
+Name=Open Download Manager
+Comment=Open-source download manager desktop shell
 # The Exec line includes %u to pass the URL to the application
-Exec=/usr/local/bin/odm-desktop.exe %u
+Exec=/usr/local/bin/odm %u
 Terminal=false
 Type=Application
-Icon=odm-desktop.exe
-Categories=Utility;
-StartupWMClass=odm-desktop.exe
-
- 
+Icon=odm
+Categories=Network;Utility;
+StartupWMClass=odm

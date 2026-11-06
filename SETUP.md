@@ -14,8 +14,9 @@ Official Wails install notes: [Wails v3 installation](https://v3.wails.io/gettin
 | Go | **1.26+** (1.27.x is fine) | Backend, CLI, Wails |
 | Node.js | **22+** | Frontend toolchain |
 | pnpm | **10.20.0** | Workspace installs |
-| Wails CLI | **v3.1.0** | Desktop `dev` / `build` |
+| Wails CLI | **v3.1.0** | Desktop `dev` / `build` / `package` |
 | Platform WebView deps | see below | Native desktop window |
+| NSIS (`makensis`) | 3.x | Windows installer packaging only |
 
 Module path:
 
@@ -72,12 +73,15 @@ If `wails3` is not found, add Go’s bin directory to `PATH` and open a new term
 - **WebView2 Runtime** — usually already installed on Windows 10 (1803+) / Windows 11.
 - Optional: run `wails3 doctor` after installing the CLI.
 - For `wails3 build` in non-interactive shells (CI / some terminals), set `CI=true` so pnpm does not abort.
+- **NSIS** (for installers only): install [NSIS 3](https://nsis.sourceforge.io/) and ensure `makensis` is on `PATH` (default install path: `C:\Program Files (x86)\NSIS`). winget: `winget install NSIS.NSIS`.
 
 #### macOS
 
 ```bash
 xcode-select --install
 ```
+
+Minimum deployment target for the desktop build is **macOS 12**.
 
 #### Linux
 
@@ -87,7 +91,14 @@ Install GTK4 / WebKitGTK and build tools as shown by:
 wails3 doctor
 ```
 
-Ubuntu-oriented packages are documented in the Wails install guide. Distros differ; follow the doctor output.
+Ubuntu 24.04+ / Debian 13+ (GTK4 + WebKitGTK 6.0):
+
+```bash
+sudo apt update
+sudo apt install build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+```
+
+Distros differ; follow the doctor output.
 
 ---
 
@@ -120,7 +131,7 @@ go run ./cmd/odm version
 Expected CLI output:
 
 ```text
-ODM — Open Download Manager 0.0.0
+ODM — Open Download Manager 0.4.0
 ```
 
 ---
@@ -202,6 +213,24 @@ go build -o bin/odm ./cmd/odm
 go build -o bin/odm-desktop ./apps/desktop
 ```
 
+### 5.5 Unsigned installers / packages (Phase 5)
+
+All packages are **unsigned**. Code signing and macOS notarization are deferred to v1.0.
+
+From `apps/desktop` with `CI=true`:
+
+| OS | Command | Artifact |
+|---|---|---|
+| Windows | `wails3 task windows:package` | `bin/odm-amd64-installer.exe` (NSIS) |
+| macOS | `wails3 task darwin:package` | `bin/odm.app` |
+| Linux | `wails3 task linux:create:deb` | `bin/odm_*.deb` |
+
+Windows packaging requires `makensis` on `PATH`. The NSIS task downloads a WebView2 bootstrapper into `build/windows/nsis/` (gitignored).
+
+CI uploads these artifacts from the `desktop-package` job (7-day retention). Local Windows smoke steps are in [`docs/TESTING.md`](docs/TESTING.md).
+
+Shared SQLite/settings live under the OS config dir `/odm` (Windows: `%AppData%\odm`). Uninstalling the Windows NSIS package does **not** delete that data directory.
+
 ---
 
 ## 6. Day-to-day commands
@@ -215,6 +244,9 @@ go build -o bin/odm-desktop ./apps/desktop
 | Go tests | `go test ./...` or `pnpm test:go` |
 | Desktop dev | `cd apps/desktop && wails3 dev` |
 | Desktop release build | `cd apps/desktop` then `CI=true wails3 build` |
+| Windows NSIS installer | `cd apps/desktop` then `CI=true wails3 task windows:package` |
+| macOS `.app` | `cd apps/desktop` then `CI=true wails3 task darwin:package` |
+| Linux `.deb` | `cd apps/desktop` then `CI=true wails3 task linux:create:deb` |
 | CLI version | `go run ./cmd/odm version` |
 
 ---
@@ -255,6 +287,10 @@ Set `CI=true` (common when `wails3 build` runs pnpm through Task on Windows).
 - On Windows, confirm WebView2 is installed.
 - On Linux, confirm WebKitGTK / GTK packages from the doctor output.
 
+### `makensis: command not found` when packaging Windows
+
+Install NSIS 3 and add it to `PATH` (see §2.5). Confirm with `makensis /VERSION`.
+
 ### Wrong Go or Wails version
 
 ```bash
@@ -272,6 +308,7 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 
 - Clone → install → test
 - Desktop app via `wails3 dev` / `wails3 build` (dashboard, settings, live progress, keep/delete and mismatch dialogs)
+- Unsigned packaging: Windows NSIS, macOS `.app`, Linux `.deb` (CI `desktop-package`)
 - `odm version` and `odm download` (single-stream + segmented HTTP/HTTPS, resume, retry, proxy modes)
 - `odm task` / `odm queue` / `odm settings` (SQLite queue shared with desktop, concurrency, connections, keep/delete, mismatch policy, proxy persistence)
 
@@ -279,7 +316,8 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 
 - Interactive TTY prompts (CLI currently uses explicit flags for decisions)
 - Per-segment crash resume wired through the manager (segment rows exist; engine clears failed segmented `.part`s for safety)
+- Signed / notarized releases (v1.0)
 - Downloads continuing after the process exits (Phase 7 background service)
-- Browser extension
+- Browser extension (Phase 6)
 
 See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for the roadmap.

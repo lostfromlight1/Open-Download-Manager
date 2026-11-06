@@ -29,7 +29,7 @@ pnpm typecheck
 pnpm test
 ```
 
-Phase 4 wires the Wails desktop UI to `internal/manager` (same DB as the CLI). Keep download logic in Go; React stays presentation-only.
+Phase 4 wires the Wails desktop UI to `internal/manager` (same DB as the CLI). Phase 5 adds unsigned packaging (NSIS / `.app` / `.deb`) and CI artifacts — see [`SETUP.md`](../SETUP.md) §5.5. Keep download logic in Go; React stays presentation-only.
 
 ## Pull requests
 

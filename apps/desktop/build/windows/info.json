@@ -1,17 +1,17 @@
 {
 	"fixed": {
-		"file_version": "0.1.0",
-		"product_version": "0.1.0"
+		"file_version": "0.4.0",
+		"product_version": "0.4.0"
 	},
 	"info": {
 		"0409": {
-			"FileVersion": "0.1.0",
-			"ProductVersion": "0.1.0",
-			"CompanyName": "My Company",
-			"FileDescription": "A odm-desktop application",
-			"LegalCopyright": "© 2026, My Company",
-			"ProductName": "My Product",
-			"Comments": "This is a comment"
+			"FileVersion": "0.4.0",
+			"ProductVersion": "0.4.0",
+			"CompanyName": "Open Download Manager contributors",
+			"FileDescription": "Open Download Manager",
+			"LegalCopyright": "(c) 2026 Open Download Manager contributors",
+			"ProductName": "Open Download Manager",
+			"Comments": "ODM desktop MVP (v0.4)"
 		}
 	}
 }

@@ -8,27 +8,27 @@
         AllowPromptForPassword="false">
     </Settings>
     <Installer
-        Path="odm-desktop.exe"
+        Path="odm.exe"
         Arguments=""
-        InstallLocation="C:\Program Files\My Company\My Product">
+        InstallLocation="C:\Program Files\Open Download Manager contributors\Open Download Manager">
     </Installer>
     <PackageInformation
-        PackageName="My Product"
-        PackageDisplayName="My Product"
-        PublisherName="CN=My Company"
-        PublisherDisplayName="My Company"
-        Version="0.1.0.0"
-        PackageDescription="A odm-desktop application">
+        PackageName="Open Download Manager"
+        PackageDisplayName="Open Download Manager"
+        PublisherName="CN=Open Download Manager contributors"
+        PublisherDisplayName="Open Download Manager contributors"
+        Version="0.4.0.0"
+        PackageDescription="Open-source download manager desktop shell">
         <Capabilities>
             <Capability Name="runFullTrust" />
             
         </Capabilities>
         <Applications>
             <Application
-                Id="com.example.odmdesktop"
-                Description="A odm-desktop application"
-                DisplayName="My Product"
-                ExecutableName="odm-desktop.exe"
+                Id="app.opendownloadmanager.desktop"
+                Description="Open-source download manager desktop shell"
+                DisplayName="Open Download Manager"
+                ExecutableName="odm.exe"
                 EntryPoint="Windows.FullTrustApplication">
                 
             </Application>
@@ -41,13 +41,13 @@
         </Dependencies>
         <Properties>
             <Framework>false</Framework>
-            <DisplayName>My Product</DisplayName>
-            <PublisherDisplayName>My Company</PublisherDisplayName>
-            <Description>A odm-desktop application</Description>
+            <DisplayName>Open Download Manager</DisplayName>
+            <PublisherDisplayName>Open Download Manager contributors</PublisherDisplayName>
+            <Description>Open-source download manager desktop shell</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>
-    <SaveLocation PackagePath="odm-desktop.msix" />
+    <SaveLocation PackagePath="odm.msix" />
     <PackageIntegrity>
         <CertificatePath></CertificatePath>
     </PackageIntegrity>

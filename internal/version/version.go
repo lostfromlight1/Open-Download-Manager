@@ -8,7 +8,7 @@ package version
 //
 // In Go, a name that starts with an Uppercase letter is exported: other
 // packages can read version.Version. A lowercase name would be package-private.
-const Version = "0.0.0"
+const Version = "0.4.0"
 
 // ProductName is the user-facing product name.
 const ProductName = "ODM — Open Download Manager"

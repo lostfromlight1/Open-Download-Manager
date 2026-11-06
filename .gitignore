@@ -11,6 +11,9 @@ coverage.out
 .wails
 apps/desktop/frontend/dist
 apps/desktop/frontend/bindings
+apps/desktop/build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+apps/desktop/build/linux/*.desktop
+.bindings-tmp*
 
 # Node
 node_modules

@@ -8,6 +8,7 @@ import (
 
 	"github.com/lostfromlight1/Open-Download-Manager/internal/netx"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/storage"
+	"github.com/lostfromlight1/Open-Download-Manager/internal/version"
 )
 
 // probeValidators performs a HEAD request to read ETag / Last-Modified.
@@ -28,7 +29,7 @@ func probeValidators(ctx context.Context, rawURL string, cfg storage.Settings) (
 	if err != nil {
 		return "", "", err
 	}
-	netx.ApplyUserAgent(req, "ODM/0.0.0")
+	netx.ApplyUserAgent(req, "ODM/"+version.Version)
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -51,3 +51,4 @@ Open-Download-Manager/
 - Phase 2: `odm task` / `odm queue` / `odm settings` use `internal/manager` + SQLite.
 - Phase 3: engine verifies Range, plans segments, runs bounded workers; CLI `--connections`; settings `download.max_connections`.
 - Phase 4: desktop DownloadService + React dashboard/settings wired to manager events.
+- Phase 5: packaging metadata under `apps/desktop/build/`; CI `desktop-package` job uploads NSIS / `.app` / `.deb`.

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lostfromlight1/Open-Download-Manager/internal/netx"
+	"github.com/lostfromlight1/Open-Download-Manager/internal/version"
 )
 
 // ProgressEvent is a throttled snapshot of transfer progress.
@@ -99,7 +100,7 @@ func (o *Options) withDefaults() Options {
 		out.MinSegmentBytes = 256 * 1024
 	}
 	if out.UserAgent == "" {
-		out.UserAgent = "ODM/0.0.0"
+		out.UserAgent = "ODM/" + version.Version
 	}
 	if out.Proxy.Mode == "" {
 		out.Proxy.Mode = netx.ProxySystem

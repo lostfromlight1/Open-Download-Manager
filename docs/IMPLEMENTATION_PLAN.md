@@ -26,7 +26,7 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 1 — Single-stream CLI engine
 
-**Status:** implemented for the `odm` CLI (desktop UI download wiring is still Phase 4).
+**Status:** implemented (CLI + desktop share the engine).
 
 **Deliverables**
 
@@ -51,7 +51,7 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 2 — Persistence, queue, user decisions
 
-**Status:** implemented for the `odm` CLI manager (desktop UI wiring remains Phase 4).
+**Status:** implemented (CLI + desktop share the manager/store).
 
 **Deliverables**
 
@@ -64,7 +64,7 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 3 — Segmented downloads
 
-**Status:** implemented in the engine + CLI/manager settings (desktop UI wiring remains Phase 4).
+**Status:** implemented (engine + CLI/manager + desktop settings).
 
 **Deliverables**
 
@@ -97,7 +97,25 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 5 — Cross-platform hardening
 
-Windows first; macOS and Linux smoke builds and packaging.
+**Status:** implemented (unsigned packaging + CI; signing/notarization deferred to v1.0).
+
+**Deliverables**
+
+- Aligned product branding/version **0.4.0** across Wails config, Windows `info.json`/NSIS, Darwin plists, Linux nfpm/desktop metadata, and `internal/version`
+- Tested open-file / reveal-in-folder command planning (`apps/desktop` openpath helpers)
+- Windows: `CI=true wails3 build` + NSIS installer (`wails3 task windows:package` / `windows:create:nsis:installer`) → `apps/desktop/bin/odm-amd64-installer.exe`
+- macOS: unsigned `.app` via `wails3 task darwin:package`
+- Linux: unsigned `.deb` via `wails3 task linux:create:deb` (AppImage/MSIX/signing out of scope)
+- CI job `desktop-package` builds and uploads artifacts on Windows, macOS, and Ubuntu (7-day retention)
+- SETUP / TESTING / README packaging commands and smoke checklists
+
+**Exit criteria**
+
+- Windows NSIS installer builds locally and in CI
+- macOS `.app` and Linux `.deb` produced in CI
+- Branding/version metadata no longer placeholders
+- Open/reveal helpers covered by unit tests
+- Docs updated; code signing / notarization explicitly deferred
 
 ## Phase 6 — Browser integration
 

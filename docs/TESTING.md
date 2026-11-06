@@ -52,6 +52,7 @@ Required server behaviors:
 - `internal/manager` tests cover queue completion, cancel+delete files, resume mismatch abort, and remove+keep files.
 - Phase 3: `internal/engine` covers segmented downloads, Range verification, planner boundaries, and single-stream fallback; `internal/storage` covers segment row CRUD after migration 002.
 - Phase 4: `apps/desktop` tests cover DownloadService list/add/settings/cancel and interactive mismatch decisions; frontend tests cover empty dashboard, boot errors, progress reducer, and format helpers.
+- Phase 5: `apps/desktop` openpath planner tests cover open/reveal command args (Windows/macOS/Linux) and missing-file parent fallback without launching a GUI.
 
 ## Quality gates
 
@@ -62,6 +63,25 @@ Before merging:
 - Frontend format, lint, typecheck, and unit tests
 - Frontend production build
 - Review dependency changes and license compatibility
+- CI `desktop-package` job builds platform packages (NSIS / `.app` / `.deb`) when packaging files change
+
+## Phase 5 smoke checklists
+
+### Windows (required for local release verification)
+
+1. `CI=true wails3 build` then `wails3 task windows:package` (requires NSIS/`makensis` on `PATH`).
+2. Run `apps/desktop/bin/odm-amd64-installer.exe`, install, launch the app.
+3. Add a small HTTP download → pause → resume → complete.
+4. Open Settings: theme + destination Browse; toggle notify-on-complete if desired.
+5. From Details: Open file / Show in folder for a completed task.
+6. Uninstall via the installer entry. Note: SQLite data under `%AppData%\odm` is **not** removed by uninstall (by design for Phase 5).
+
+### macOS / Linux (contributor optional; CI is the Phase 5 gate)
+
+1. Download the CI `desktop-package` artifact for the OS, or build locally (`darwin:package` / `linux:create:deb`).
+2. Install or open the package; confirm the window launches.
+3. Add one download and confirm list/progress update.
+4. Confirm Open / Reveal uses the platform file manager (`open` / `xdg-open`).
 
 ## Reliability tests
 

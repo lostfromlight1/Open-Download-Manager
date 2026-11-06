@@ -5,6 +5,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/lostfromlight1/Open-Download-Manager/internal/version"
 )
 
 // ClientOptions configures a download-oriented HTTP client.
@@ -43,7 +45,7 @@ func DefaultClientOptions() ClientOptions {
 		ResponseHeaderTimeout: 60 * time.Second,
 		TLSHandshakeTimeout:   15 * time.Second,
 		MaxRedirects:          10,
-		UserAgent:             "ODM/0.0.0",
+		UserAgent:             "ODM/" + version.Version,
 	}
 }
 

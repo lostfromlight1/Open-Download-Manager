@@ -4,10 +4,10 @@ info:
   companyName: "Open Download Manager contributors"
   productName: "Open Download Manager"
   productIdentifier: "app.opendownloadmanager.desktop"
-  description: "Open Download Manager desktop shell"
+  description: "Open-source download manager desktop shell"
   copyright: "(c) 2026 Open Download Manager contributors"
-  comments: "Phase 0' Go + Wails foundation"
-  version: "0.0.0"
+  comments: "ODM desktop MVP (v0.4)"
+  version: "0.4.0"
 
 dev_mode:
   root_path: .
