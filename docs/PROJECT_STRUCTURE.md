@@ -4,8 +4,9 @@
 Open-Download-Manager/
 ├── apps/
 │   └── desktop/                 # Wails v3 desktop shell
-│       ├── main.go
+│       ├── main.go              # Wails bootstrap + manager queue
 │       ├── shellservice.go
+│       ├── downloadservice.go   # thin Wails facade over manager
 │       ├── frontend/            # React + TypeScript UI
 │       ├── build/               # Wails packaging assets
 │       └── Taskfile.yml
@@ -49,4 +50,4 @@ Open-Download-Manager/
 - Phase 1: `odm download` uses `internal/engine` + `internal/netx`.
 - Phase 2: `odm task` / `odm queue` / `odm settings` use `internal/manager` + SQLite.
 - Phase 3: engine verifies Range, plans segments, runs bounded workers; CLI `--connections`; settings `download.max_connections`.
-- Desktop UI still reports downloads unavailable until Phase 4.
+- Phase 4: desktop DownloadService + React dashboard/settings wired to manager events.

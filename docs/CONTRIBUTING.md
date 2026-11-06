@@ -29,7 +29,7 @@ pnpm typecheck
 pnpm test
 ```
 
-Phase 3 provides segmented multi-connection downloads in the engine (`--connections`, `download.max_connections`) with safe single-stream fallback. Desktop UI download wiring belongs in Phase 4.
+Phase 4 wires the Wails desktop UI to `internal/manager` (same DB as the CLI). Keep download logic in Go; React stays presentation-only.
 
 ## Pull requests
 

@@ -144,7 +144,7 @@ pnpm --dir apps/desktop exec wails3 dev -config ./build/config.yml
 
 This starts the Vite frontend and the native Wails window with hot reload.
 
-The shell should show that download management is not available yet.
+The desktop dashboard should list downloads from the shared ODM database (add one via the UI or `odm task add`).
 
 ### 5.2 Frontend only (browser preview, no native window)
 
@@ -271,16 +271,16 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 **Works now**
 
 - Clone → install → test
-- Desktop shell via `wails3 dev` / `wails3 build`
+- Desktop app via `wails3 dev` / `wails3 build` (dashboard, settings, live progress, keep/delete and mismatch dialogs)
 - `odm version` and `odm download` (single-stream + segmented HTTP/HTTPS, resume, retry, proxy modes)
-- `odm task` / `odm queue` / `odm settings` (SQLite queue, concurrency, connections, keep/delete, mismatch policy, proxy persistence)
+- `odm task` / `odm queue` / `odm settings` (SQLite queue shared with desktop, concurrency, connections, keep/delete, mismatch policy, proxy persistence)
 
 **Not implemented yet (later phases)**
 
-- Desktop UI download management
+- Theme selector / native completion notifications / download detail inspector
 - Interactive TTY prompts (CLI currently uses explicit flags for decisions)
 - Per-segment crash resume wired through the manager (segment rows exist; engine clears failed segmented `.part`s for safety)
-- Proxy settings UI
+- Downloads continuing after the process exits (Phase 7 background service)
 - Browser extension
 
 See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for the roadmap.

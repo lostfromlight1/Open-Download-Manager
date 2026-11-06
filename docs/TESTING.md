@@ -51,6 +51,7 @@ Required server behaviors:
 - `internal/storage` tests round-trip tasks/settings through SQLite migrations.
 - `internal/manager` tests cover queue completion, cancel+delete files, resume mismatch abort, and remove+keep files.
 - Phase 3: `internal/engine` covers segmented downloads, Range verification, planner boundaries, and single-stream fallback; `internal/storage` covers segment row CRUD after migration 002.
+- Phase 4: `apps/desktop` tests cover DownloadService list/add/settings/cancel and interactive mismatch decisions; frontend tests cover empty dashboard, boot errors, progress reducer, and format helpers.
 
 ## Quality gates
 
