@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { etaSeconds, formatBytes, formatSpeed, progressPercent } from "./format";
+import {
+  etaSeconds,
+  formatBytes,
+  formatSpeed,
+  progressPercent,
+} from "./format";
 
 describe("format helpers", () => {
   it("formats bytes", () => {

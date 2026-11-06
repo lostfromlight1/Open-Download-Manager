@@ -52,9 +52,7 @@ export function FileActionDialog({
         </>
       }
     >
-      <p className="text-[var(--color-text-muted)]">
-        {fileName}
-      </p>
+      <p className="text-[var(--color-text-muted)]">{fileName}</p>
       <p className="mt-2">
         {mode === "cancel"
           ? "What should ODM do with the partial file?"

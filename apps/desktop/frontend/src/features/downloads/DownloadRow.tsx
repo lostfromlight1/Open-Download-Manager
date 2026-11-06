@@ -32,7 +32,11 @@ export function DownloadRow({
 }: Props) {
   const busy = busyId === d.id;
   const pct = progressPercent(d.downloadedBytes, d.totalBytes);
-  const eta = etaSeconds(d.downloadedBytes, d.totalBytes, d.bytesPerSecond ?? null);
+  const eta = etaSeconds(
+    d.downloadedBytes,
+    d.totalBytes,
+    d.bytesPerSecond ?? null,
+  );
   const sizeLabel =
     d.totalBytes != null
       ? `${formatBytes(d.downloadedBytes)} / ${formatBytes(d.totalBytes)}`

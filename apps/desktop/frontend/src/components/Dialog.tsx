@@ -28,7 +28,9 @@ export function Dialog({ title, children, onClose, footer }: Props) {
           {title}
         </h2>
         <div className="mt-3 text-sm text-[var(--color-text)]">{children}</div>
-        {footer ? <div className="mt-5 flex justify-end gap-2">{footer}</div> : null}
+        {footer ? (
+          <div className="mt-5 flex justify-end gap-2">{footer}</div>
+        ) : null}
       </div>
     </div>
   );

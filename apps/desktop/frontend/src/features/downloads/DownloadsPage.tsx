@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { notifyDownloadComplete } from "../../lib/notify";
 import { getDesktopApi } from "../../services/desktopApi";
 import {
@@ -9,10 +16,7 @@ import {
 import { AddDownloadDialog } from "./AddDownloadDialog";
 import { DownloadDetail } from "./DownloadDetail";
 import { DownloadRow } from "./DownloadRow";
-import {
-  downloadsReducer,
-  initialDownloadsState,
-} from "./downloadReducer";
+import { downloadsReducer, initialDownloadsState } from "./downloadReducer";
 import { FileActionDialog } from "./FileActionDialog";
 import { ResumeMismatchDialog } from "./ResumeMismatchDialog";
 import type { DownloadDTO, FilterTab } from "./downloadTypes";
@@ -123,7 +127,14 @@ export function DownloadsPage({
       else if (d.status === "failed") failed++;
       else if (d.status === "cancelled") cancelled++;
     }
-    return { active, queued, completed, failed, cancelled, all: downloads.length };
+    return {
+      active,
+      queued,
+      completed,
+      failed,
+      cancelled,
+      all: downloads.length,
+    };
   }, [downloads]);
 
   const filtered = useMemo(() => {
@@ -171,7 +182,9 @@ export function DownloadsPage({
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-6 py-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-[var(--color-text-muted)]">ODM</p>
+          <p className="text-sm font-medium text-[var(--color-text-muted)]">
+            ODM
+          </p>
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)]">
             Open Download Manager
           </h1>
@@ -205,7 +218,9 @@ export function DownloadsPage({
             className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3"
           >
             <p className="text-xs text-[var(--color-text-muted)]">{c.label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">{c.value}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">
+              {c.value}
+            </p>
           </div>
         ))}
       </section>
@@ -234,7 +249,9 @@ export function DownloadsPage({
       </div>
 
       {state.status === "loading" ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Loading downloads…</p>
+        <p className="text-sm text-[var(--color-text-muted)]">
+          Loading downloads…
+        </p>
       ) : null}
       {state.status === "error" ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-[var(--color-danger)]">

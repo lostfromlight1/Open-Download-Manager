@@ -58,12 +58,7 @@ export interface SettingsDTO {
 }
 
 export type FilterTab =
-  | "all"
-  | "active"
-  | "queued"
-  | "completed"
-  | "failed"
-  | "cancelled";
+  "all" | "active" | "queued" | "completed" | "failed" | "cancelled";
 
 export function isActiveStatus(status: string): boolean {
   return (

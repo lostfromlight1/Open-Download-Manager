@@ -1,4 +1,7 @@
-import type { DownloadDTO, SettingsDTO } from "../features/downloads/downloadTypes";
+import type {
+  DownloadDTO,
+  SettingsDTO,
+} from "../features/downloads/downloadTypes";
 
 /**
  * Thin wrappers around generated Wails bindings.
@@ -7,10 +10,7 @@ import type { DownloadDTO, SettingsDTO } from "../features/downloads/downloadTyp
 
 export interface DesktopApi {
   listDownloads(): Promise<DownloadDTO[]>;
-  addDownload(req: {
-    url: string;
-    destination: string;
-  }): Promise<DownloadDTO>;
+  addDownload(req: { url: string; destination: string }): Promise<DownloadDTO>;
   pauseDownload(id: string): Promise<void>;
   resumeDownload(id: string): Promise<void>;
   cancelDownload(id: string, action: string): Promise<void>;
@@ -32,12 +32,10 @@ export function setDesktopApi(next: DesktopApi | null): void {
 }
 
 async function loadBindings(): Promise<DesktopApi> {
-  const shell = await import(
-    "../../bindings/github.com/lostfromlight1/Open-Download-Manager/apps/desktop/shellservice"
-  );
-  const downloads = await import(
-    "../../bindings/github.com/lostfromlight1/Open-Download-Manager/apps/desktop/downloadservice"
-  );
+  const shell =
+    await import("../../bindings/github.com/lostfromlight1/Open-Download-Manager/apps/desktop/shellservice");
+  const downloads =
+    await import("../../bindings/github.com/lostfromlight1/Open-Download-Manager/apps/desktop/downloadservice");
   return {
     listDownloads: async () => (await downloads.ListDownloads()) ?? [],
     addDownload: (req) => downloads.AddDownload(req),
