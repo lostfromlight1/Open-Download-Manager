@@ -119,7 +119,22 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 6 — Browser integration
 
-WebExtension + native messaging, opt-in only.
+**Status:** implemented (opt-in WebExtension + native messaging; no download interception).
+
+**Deliverables**
+
+- Setting `browser.integration_enabled` (default off) + optional `browser.chrome_extension_id`
+- `internal/browserhost` protocol (ping/enqueue), NM IO, filename sanitization, host install/uninstall
+- `cmd/odm-nmhost` enqueues into the shared SQLite store (does not run `RunQueue`)
+- Desktop Settings toggle registers the host; reconcile loop surfaces NM-enqueued tasks in the UI
+- `apps/browser-extension` MV3 for Chrome (`manifest.json`) and Firefox (`manifest.firefox.json`): context menu, popup status, optional click capture
+
+**Exit criteria**
+
+- Enqueue rejected when integration is disabled
+- Context-menu send creates a queued task when enabled + download directory set
+- Protocol/settings tests cover reject and happy paths
+- No history/page/cookie collection; download interception remains later
 
 ## Phase 7 — Background service
 

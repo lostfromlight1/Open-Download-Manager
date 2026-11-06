@@ -1,2 +1,3 @@
 packages:
   - "apps/desktop/frontend"
+  - "apps/browser-extension"

@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "ODM — Open Download Manager",
+  "version": "0.4.0",
+  "description": "Send download links to Open Download Manager (opt-in native messaging).",
+  "permissions": ["contextMenus", "nativeMessaging", "storage", "scripting"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "ODM",
+    "default_popup": "popup.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "odm@opendownloadmanager.app",
+      "strict_min_version": "109.0"
+    }
+  }
+}

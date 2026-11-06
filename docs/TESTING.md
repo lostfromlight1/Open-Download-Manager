@@ -53,6 +53,7 @@ Required server behaviors:
 - Phase 3: `internal/engine` covers segmented downloads, Range verification, planner boundaries, and single-stream fallback; `internal/storage` covers segment row CRUD after migration 002.
 - Phase 4: `apps/desktop` tests cover DownloadService list/add/settings/cancel and interactive mismatch decisions; frontend tests cover empty dashboard, boot errors, progress reducer, and format helpers.
 - Phase 5: `apps/desktop` openpath planner tests cover open/reveal command args (Windows/macOS/Linux) and missing-file parent fallback without launching a GUI.
+- Phase 6: `internal/browserhost` covers NM framing, schema rejection, disabled/no-directory enqueue, and happy-path enqueue into a temp SQLite store.
 
 ## Quality gates
 
@@ -82,6 +83,15 @@ Before merging:
 2. Install or open the package; confirm the window launches.
 3. Add one download and confirm list/progress update.
 4. Confirm Open / Reveal uses the platform file manager (`open` / `xdg-open`).
+
+## Phase 6 browser smoke (manual)
+
+1. Build host: `go build -o apps/desktop/bin/odm-nmhost.exe ./cmd/odm-nmhost` (or `odm-nmhost` on Unix) and ensure it sits next to the desktop binary or on `PATH`.
+2. In ODM Settings: set download folder, enable browser integration, paste Chrome extension ID (from `chrome://extensions` with Developer mode), Save.
+3. Load unpacked extension from `apps/browser-extension` (Firefox: use `manifest.firefox.json` as `manifest.json`).
+4. Extension popup → Refresh status → expect “Connected” when enabled.
+5. Right-click a link → Download with ODM → task appears in the desktop list within ~1s.
+6. Disable integration in Settings → enqueue should fail with a clear extension error.
 
 ## Reliability tests
 

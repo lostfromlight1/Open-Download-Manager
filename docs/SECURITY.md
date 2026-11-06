@@ -25,11 +25,12 @@ The application downloads untrusted remote content and accepts URLs and commands
 - Handle disk-full and permission failures without corrupting unrelated files.
 
 ### Browser native messaging
-- Validate message schema, version, size, URL, and allowed action.
+- Validate message schema, version, size, URL, and allowed action (`ping` / `enqueue` only; max 256 KiB).
 - Do not expose arbitrary shell, process, or filesystem commands.
-- Authenticate/validate the calling browser where the platform mechanism permits.
-- Require explicit user configuration and provide a disable switch.
-- Keep permissions minimal.
+- Authenticate/validate the calling browser where the platform mechanism permits (Chrome `allowed_origins`, Firefox `allowed_extensions`).
+- Require explicit user configuration (`browser.integration_enabled`, default off) and provide a disable switch that unregisters the host.
+- Keep permissions minimal; optional click-capture requests host permissions only when enabled.
+- Host enqueues only; it does not run a second download scheduler.
 
 ### Persistence and secrets
 - Use parameterized SQL.

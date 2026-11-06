@@ -231,6 +231,28 @@ CI uploads these artifacts from the `desktop-package` job (7-day retention). Loc
 
 Shared SQLite/settings live under the OS config dir `/odm` (Windows: `%AppData%\odm`). Uninstalling the Windows NSIS package does **not** delete that data directory.
 
+### 5.6 Browser extension (Phase 6)
+
+1. Build the native host next to the desktop app (or put it on `PATH`):
+
+```powershell
+go build -o apps/desktop/bin/odm-nmhost.exe ./cmd/odm-nmhost
+```
+
+```bash
+go build -o apps/desktop/bin/odm-nmhost ./cmd/odm-nmhost
+```
+
+2. In the desktop app: Settings → set default download folder → enable **Browser integration** → for Chrome/Edge paste the extension ID from `chrome://extensions` → Save (registers the host).
+3. Load the unpacked extension from `apps/browser-extension`.
+   - Chrome/Edge: Developer mode → Load unpacked → select that folder (`manifest.json`).
+   - Firefox: use `manifest.firefox.json` (copy over `manifest.json` or load via `about:debugging` temporary add-on).
+4. Open the extension popup and click **Refresh status**. Right-click a link → **Download with ODM**.
+
+CLI: `odm settings set browser.integration_enabled true` (still register the host via desktop Save, or call install helpers after building `odm-nmhost`).
+
+Optional click capture is off by default and asks for http(s) page access when enabled.
+
 ---
 
 ## 6. Day-to-day commands
@@ -248,6 +270,7 @@ Shared SQLite/settings live under the OS config dir `/odm` (Windows: `%AppData%\
 | macOS `.app` | `cd apps/desktop` then `CI=true wails3 task darwin:package` |
 | Linux `.deb` | `cd apps/desktop` then `CI=true wails3 task linux:create:deb` |
 | CLI version | `go run ./cmd/odm version` |
+| Native messaging host | `go build -o apps/desktop/bin/odm-nmhost.exe ./cmd/odm-nmhost` |
 
 ---
 
@@ -309,6 +332,7 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 - Clone → install → test
 - Desktop app via `wails3 dev` / `wails3 build` (dashboard, settings, live progress, keep/delete and mismatch dialogs)
 - Unsigned packaging: Windows NSIS, macOS `.app`, Linux `.deb` (CI `desktop-package`)
+- Opt-in browser extension + `odm-nmhost` native messaging (context-menu enqueue)
 - `odm version` and `odm download` (single-stream + segmented HTTP/HTTPS, resume, retry, proxy modes)
 - `odm task` / `odm queue` / `odm settings` (SQLite queue shared with desktop, concurrency, connections, keep/delete, mismatch policy, proxy persistence)
 
@@ -318,6 +342,6 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 - Per-segment crash resume wired through the manager (segment rows exist; engine clears failed segmented `.part`s for safety)
 - Signed / notarized releases (v1.0)
 - Downloads continuing after the process exits (Phase 7 background service)
-- Browser extension (Phase 6)
+- Silent browser download interception
 
 See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for the roadmap.

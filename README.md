@@ -24,7 +24,7 @@ ODM is a desktop download manager with a reusable **Go** download engine, a **Re
 
 ## Current project status
 
-Phase 5 cross-platform hardening: unsigned Windows NSIS installer, macOS `.app`, and Linux `.deb` packaging; CI `desktop-package` artifacts on all three OSes. Phase 4 desktop MVP remains the UI (dashboard, settings, theme, notifications, open/reveal). CLI Phase 3 features (`--connections`, queue, settings) remain available. Code signing / notarization and browser integration are later.
+Phase 6 browser integration: opt-in Chrome/Firefox WebExtension + `odm-nmhost` native messaging (context-menu send to the shared queue). Phase 5 packaging (NSIS / `.app` / `.deb` + CI artifacts) and Phase 4 desktop MVP remain. Download interception, background service, and code signing are later.
 
 License: MIT.
 

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ODM</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Open Download Manager</h1>
+      <p id="status" class="muted">Checking host…</p>
+      <label class="row">
+        <input type="checkbox" id="captureClicks" />
+        Capture http(s) link clicks (optional)
+      </label>
+      <p class="hint">
+        Enable browser integration in the ODM desktop Settings, set a download
+        folder, and paste your Chrome extension ID when using Chrome/Edge.
+      </p>
+      <p id="lastError" class="error" hidden></p>
+      <button type="button" id="refresh">Refresh status</button>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

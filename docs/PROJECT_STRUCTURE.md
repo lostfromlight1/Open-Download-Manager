@@ -42,7 +42,7 @@ Open-Download-Manager/
 - `apps/desktop` wires UI to Go services; it must not become the download engine.
 - `cmd/odm` stays a thin CLI over `internal/engine` and `internal/manager`.
 - Create additional `internal/*` packages when a phase needs them; do not invent empty packages early.
-- Browser extension arrives in a later phase under `apps/browser-extension`.
+- Browser extension lives under `apps/browser-extension`; native host is `cmd/odm-nmhost` + `internal/browserhost`.
 
 ## Current layout notes
 
@@ -52,3 +52,4 @@ Open-Download-Manager/
 - Phase 3: engine verifies Range, plans segments, runs bounded workers; CLI `--connections`; settings `download.max_connections`.
 - Phase 4: desktop DownloadService + React dashboard/settings wired to manager events.
 - Phase 5: packaging metadata under `apps/desktop/build/`; CI `desktop-package` job uploads NSIS / `.app` / `.deb`.
+- Phase 6: `apps/browser-extension` + `cmd/odm-nmhost` enqueue via shared SQLite.
