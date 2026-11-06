@@ -1,0 +1,20 @@
+{
+  "name": "open-download-manager",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --dir apps/desktop exec wails3 dev -config ./build/config.yml",
+    "dev:web": "pnpm --filter @open-download-manager/desktop-frontend dev",
+    "build": "pnpm --filter @open-download-manager/desktop-frontend build",
+    "build:desktop": "pnpm --dir apps/desktop exec wails3 build",
+    "lint": "pnpm --filter @open-download-manager/desktop-frontend lint",
+    "format": "pnpm --filter @open-download-manager/desktop-frontend format",
+    "typecheck": "pnpm --filter @open-download-manager/desktop-frontend typecheck",
+    "test": "pnpm --filter @open-download-manager/desktop-frontend test",
+    "test:go": "go test ./..."
+  }
+}
