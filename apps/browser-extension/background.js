@@ -1,5 +1,6 @@
 /* global shouldInterceptDownload, downloadBasename */
-// Chrome MV3 service worker; Firefox loads intercept.js via manifest scripts.
+// Chrome MV3 service worker loads helpers via importScripts.
+// Firefox lists intercept.js before this file in manifest.firefox.json.
 if (typeof importScripts === "function") {
   importScripts("intercept.js");
 }
@@ -8,6 +9,7 @@ const HOST_NAME = "app.opendownloadmanager.native";
 const MENU_ID = "odm-send-link";
 const CLICK_SCRIPT_ID = "odm-click-capture";
 
+/** Download IDs currently being handed off to ODM (avoid double cancel). */
 const interceptInFlight = new Set();
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -18,21 +20,11 @@ chrome.runtime.onInstalled.addListener(() => {
       contexts: ["link"],
     });
   });
-  void chrome.storage.local
-    .get({ captureClicks: false, interceptDownloads: false })
-    .then((prefs) => {
-      void setClickCapture(!!prefs.captureClicks);
-      void syncInterceptListener(!!prefs.interceptDownloads);
-    });
+  void restorePrefs();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  void chrome.storage.local
-    .get({ captureClicks: false, interceptDownloads: false })
-    .then((prefs) => {
-      void setClickCapture(!!prefs.captureClicks);
-      void syncInterceptListener(!!prefs.interceptDownloads);
-    });
+  void restorePrefs();
 });
 
 chrome.contextMenus.onClicked.addListener((info) => {
@@ -60,46 +52,46 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "setPrefs") {
-    void (async () => {
-      const next = {};
-      if ("captureClicks" in msg) {
-        next.captureClicks = !!msg.captureClicks;
-      }
-      if ("interceptDownloads" in msg) {
-        next.interceptDownloads = !!msg.interceptDownloads;
-      }
-      const current = await chrome.storage.local.get({
-        captureClicks: false,
-        interceptDownloads: false,
-      });
-      const capture =
-        "captureClicks" in next ? next.captureClicks : !!current.captureClicks;
-      const intercept =
-        "interceptDownloads" in next
-          ? next.interceptDownloads
-          : !!current.interceptDownloads;
-
-      let ok = true;
-      if ("captureClicks" in next) {
-        ok = (await setClickCapture(capture)) && ok;
-      }
-      if ("interceptDownloads" in next) {
-        ok = (await setInterceptDownloads(intercept)) && ok;
-      }
-      const stored = await chrome.storage.local.get({
-        captureClicks: false,
-        interceptDownloads: false,
-      });
-      sendResponse({
-        ok,
-        captureClicks: !!stored.captureClicks,
-        interceptDownloads: !!stored.interceptDownloads,
-      });
-    })();
+    void applyPrefs(msg).then(sendResponse);
     return true;
   }
   return false;
 });
+
+/** Re-apply stored prefs after install, browser startup, or SW wake. */
+async function restorePrefs() {
+  const prefs = await chrome.storage.local.get({
+    captureClicks: false,
+    interceptDownloads: false,
+  });
+  await setClickCapture(!!prefs.captureClicks);
+  await setInterceptDownloads(!!prefs.interceptDownloads);
+}
+
+/**
+ * Apply popup preference changes. Does not call permissions.request —
+ * the popup must already have obtained optional permissions under a user gesture.
+ */
+async function applyPrefs(msg) {
+  let ok = true;
+  // Only touch keys the popup sent so one toggle cannot disturb the other.
+  if ("captureClicks" in msg) {
+    ok = (await setClickCapture(!!msg.captureClicks)) && ok;
+  }
+  if ("interceptDownloads" in msg) {
+    ok = (await setInterceptDownloads(!!msg.interceptDownloads)) && ok;
+  }
+
+  const stored = await chrome.storage.local.get({
+    captureClicks: false,
+    interceptDownloads: false,
+  });
+  return {
+    ok,
+    captureClicks: !!stored.captureClicks,
+    interceptDownloads: !!stored.interceptDownloads,
+  };
+}
 
 function sendNative(payload) {
   return new Promise((resolve) => {
@@ -145,13 +137,13 @@ async function setClickCapture(enabled) {
       ids: [CLICK_SCRIPT_ID],
     });
   } catch {
-    // not registered yet
+    // Script was not registered yet.
   }
   if (!enabled) {
     await chrome.storage.local.set({ captureClicks: false });
     return true;
   }
-  // Permission must already have been granted from the popup (user gesture).
+  // Host permission is requested in popup.js during the checkbox click.
   const has = await chrome.permissions.contains({
     origins: ["http://*/*", "https://*/*"],
   });
@@ -178,7 +170,7 @@ async function setInterceptDownloads(enabled) {
     removeInterceptListener();
     return true;
   }
-  // Permission must already have been granted from the popup (user gesture).
+  // downloads permission is requested in popup.js during the checkbox click.
   const has = await chrome.permissions.contains({
     permissions: ["downloads"],
   });
@@ -190,22 +182,6 @@ async function setInterceptDownloads(enabled) {
   await chrome.storage.local.set({ interceptDownloads: true });
   attachInterceptListener();
   return true;
-}
-
-async function syncInterceptListener(wantEnabled) {
-  if (!wantEnabled) {
-    removeInterceptListener();
-    return;
-  }
-  const has = await chrome.permissions.contains({
-    permissions: ["downloads"],
-  });
-  if (!has) {
-    await chrome.storage.local.set({ interceptDownloads: false });
-    removeInterceptListener();
-    return;
-  }
-  attachInterceptListener();
 }
 
 function attachInterceptListener() {
@@ -239,32 +215,36 @@ async function handleDownloadCreated(item) {
   if (!prefs.interceptDownloads) {
     return;
   }
-  if (!shouldInterceptDownload(item)) {
+
+  // Prefer finalUrl after redirects; fall back to the original request URL.
+  const url = String(item.finalUrl || item.url || "").trim();
+  const candidate = { ...item, url };
+  if (!shouldInterceptDownload(candidate)) {
     return;
   }
+
   interceptInFlight.add(item.id);
   try {
     const name = downloadBasename(item.filename || "");
-    const res = await enqueue(item.url, name);
+    const res = await enqueue(url, name);
+    // Leave the browser download alone if ODM rejected or is unreachable.
     if (!res?.ok) {
       return;
     }
     try {
       await chrome.downloads.cancel(item.id);
     } catch {
-      // race with browser completion
+      // Browser may have finished before cancel.
     }
     try {
       await chrome.downloads.erase({ id: item.id });
     } catch {
-      // ignore erase failures
+      // Erase is best-effort cleanup of the cancelled item.
     }
   } finally {
     interceptInFlight.delete(item.id);
   }
 }
 
-// Restore listeners after service-worker restart.
-void chrome.storage.local
-  .get({ interceptDownloads: false })
-  .then((prefs) => syncInterceptListener(!!prefs.interceptDownloads));
+// Service workers can restart while the browser stays open; re-bind listeners.
+void restorePrefs();

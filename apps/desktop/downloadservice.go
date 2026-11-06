@@ -39,6 +39,7 @@ func NewDownloadService() *DownloadService {
 	return &DownloadService{}
 }
 
+// setTrayController lets UpdateSettings apply ui.close_to_tray at runtime.
 func (s *DownloadService) setTrayController(tray *trayController) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -3,6 +3,10 @@
  * Loaded via importScripts (Chrome SW) or script order (Firefox).
  */
 
+/**
+ * Returns true when a browser DownloadItem should be handed to ODM.
+ * Only http(s); skips HTML/XHTML so normal navigations are not stolen.
+ */
 function shouldInterceptDownload(item) {
   if (!item || typeof item.url !== "string") {
     return false;
@@ -19,15 +23,14 @@ function shouldInterceptDownload(item) {
   const mime = String(item.mime || "")
     .toLowerCase()
     .trim();
-  if (
-    mime.startsWith("text/html") ||
-    mime.startsWith("application/xhtml")
-  ) {
+  // Empty mime is allowed — many file downloads omit it at onCreated time.
+  if (mime.startsWith("text/html") || mime.startsWith("application/xhtml")) {
     return false;
   }
   return true;
 }
 
+/** Last path segment of a browser download filename (OS path or bare name). */
 function downloadBasename(filename) {
   const raw = String(filename || "").trim();
   if (!raw) {

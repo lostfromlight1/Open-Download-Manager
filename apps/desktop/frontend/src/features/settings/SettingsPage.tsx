@@ -227,8 +227,8 @@ export function SettingsPage({ onBack, onSaved }: Props) {
               Opt-in only. The extension may send http(s) download links to ODM
               via native messaging. It does not read browsing history or page
               content. A default download folder is required when enabled. To
-              replace the browser&apos;s own downloads with ODM, use{" "}
-              <strong className="font-medium">Send browser downloads to ODM</strong>{" "}
+              replace the browser&apos;s own downloads with ODM, enable{" "}
+              <span className="font-medium">Send browser downloads to ODM</span>{" "}
               in the extension popup (not here).
             </p>
             <label className="flex items-center gap-2 text-sm">

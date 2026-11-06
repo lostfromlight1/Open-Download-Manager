@@ -33,7 +33,7 @@ captureEl.addEventListener("change", async () => {
   errorEl.hidden = true;
   const want = captureEl.checked;
   if (want) {
-    // chrome.permissions.request must run in the popup during this gesture.
+    // Optional host permission must be requested here (user gesture), not in the SW.
     const granted = await chrome.permissions.request({
       origins: ["http://*/*", "https://*/*"],
     });
@@ -49,8 +49,7 @@ captureEl.addEventListener("change", async () => {
     type: "setPrefs",
     captureClicks: want,
   });
-  const enabled = !!(res?.ok && want);
-  captureEl.checked = enabled;
+  captureEl.checked = !!(res?.ok && want);
   if (want && !res?.ok) {
     errorEl.hidden = false;
     errorEl.textContent =
@@ -62,7 +61,7 @@ interceptEl.addEventListener("change", async () => {
   errorEl.hidden = true;
   const want = interceptEl.checked;
   if (want) {
-    // chrome.permissions.request must run in the popup during this gesture.
+    // Optional downloads permission must be requested here (user gesture), not in the SW.
     const granted = await chrome.permissions.request({
       permissions: ["downloads"],
     });
@@ -73,13 +72,18 @@ interceptEl.addEventListener("change", async () => {
         "Download interception needs the Downloads permission.";
       return;
     }
+  } else {
+    try {
+      await chrome.permissions.remove({ permissions: ["downloads"] });
+    } catch {
+      // Permission may already be absent.
+    }
   }
   const res = await chrome.runtime.sendMessage({
     type: "setPrefs",
     interceptDownloads: want,
   });
-  const enabled = !!(res?.ok && want);
-  interceptEl.checked = enabled;
+  interceptEl.checked = !!(res?.ok && want);
   if (want && !res?.ok) {
     errorEl.hidden = false;
     errorEl.textContent =

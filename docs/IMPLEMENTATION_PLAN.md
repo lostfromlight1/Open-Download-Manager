@@ -119,7 +119,7 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 6 — Browser integration
 
-**Status:** implemented (opt-in WebExtension + native messaging; no download interception).
+**Status:** implemented (opt-in WebExtension + native messaging; interception is Phase 8).
 
 **Deliverables**
 

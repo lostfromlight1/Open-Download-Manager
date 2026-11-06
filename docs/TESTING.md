@@ -112,12 +112,13 @@ Before merging:
 ### Download interception
 
 1. Complete Phase 6 setup (host installed, integration enabled, extension loaded).
-2. Extension popup → enable **Send browser downloads to ODM** → allow the Downloads permission when prompted.
-3. In Chrome, start a normal http(s) file download (e.g. a zip from a public URL).
-4. Expect: browser download cancelled/removed; task appears in ODM and downloads there.
-5. Disable the popup toggle → normal browser downloads work again.
-6. With toggle on, confirm opening ordinary web pages still works (HTML MIME is not intercepted).
-7. Optional: with ODM integration disabled, intercept should leave the browser download running after enqueue failure.
+2. Extension popup → enable **Send browser downloads to ODM** → allow the Downloads permission when prompted (must stay checked; permission is requested from the popup, not the service worker).
+3. Confirm popup status is **Connected — browser integration enabled** (otherwise enqueue fails and the browser keeps the file).
+4. In Chrome, start a normal http(s) file download (e.g. a zip from a public URL).
+5. Expect: browser download cancelled/removed; task appears in ODM and downloads there.
+6. Disable the popup toggle → normal browser downloads work again.
+7. With toggle on, confirm opening ordinary web pages still works (HTML MIME is not intercepted).
+8. Optional: with ODM integration disabled, intercept should leave the browser download running after enqueue failure.
 
 ### Desktop layout
 

@@ -33,6 +33,8 @@ func main() {
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
+		// Keep the process alive when the window is hidden to the tray.
+		// Real exit is tray Quit / close-to-tray off (see trayController).
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},

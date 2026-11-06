@@ -26,6 +26,8 @@ func newTrayController(app *application.App, closeToTray bool) *trayController {
 	return &trayController{app: app, closeToTray: closeToTray}
 }
 
+// SetCloseToTray updates the persisted preference's runtime effect.
+// Disabling while hidden restores the window; enabling ensures the tray icon exists.
 func (t *trayController) SetCloseToTray(enabled bool) {
 	t.mu.Lock()
 	t.closeToTray = enabled
@@ -37,8 +39,13 @@ func (t *trayController) SetCloseToTray(enabled bool) {
 		}
 		return
 	}
-	// Create or re-show the tray when the setting is turned on at runtime.
 	t.ensureTray()
+	t.mu.Lock()
+	tray := t.tray
+	t.mu.Unlock()
+	if tray != nil {
+		tray.Show()
+	}
 }
 
 func (t *trayController) CloseToTrayEnabled() bool {
@@ -66,6 +73,7 @@ func (t *trayController) Quit() {
 	}
 }
 
+// attachWindow wires close-to-tray hide behavior and creates the tray when enabled.
 func (t *trayController) attachWindow(win *application.WebviewWindow) {
 	t.mu.Lock()
 	t.window = win
@@ -83,8 +91,9 @@ func (t *trayController) attachWindow(win *application.WebviewWindow) {
 			e.Cancel()
 			return
 		}
-		// DisableQuitOnLastWindowClosed stays true so tray mode can hide the
-		// last window. When the user really closes (setting off or Quit), exit.
+		// App options keep DisableQuitOnLastWindowClosed true so tray mode can
+		// hide the last window. When close-to-tray is off (or Quit was chosen),
+		// we must Quit explicitly or the process would keep running headless.
 		if !alreadyQuitting && app != nil {
 			t.mu.Lock()
 			t.forceQuit = true
@@ -98,6 +107,7 @@ func (t *trayController) attachWindow(win *application.WebviewWindow) {
 	}
 }
 
+// ensureTray creates the system tray once (Show / Quit menu + click to restore).
 func (t *trayController) ensureTray() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
