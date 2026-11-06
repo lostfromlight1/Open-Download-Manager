@@ -20,7 +20,9 @@ const (
 	SettingMaxRetries        = "download.max_retries"
 	SettingConnectTimeoutSec = "download.connect_timeout_sec"
 	SettingStallTimeoutSec   = "download.stall_timeout_sec"
-	SettingDownloadDir       = "download.directory" // default folder hint
+	SettingDownloadDir       = "download.directory"    // default folder hint
+	SettingTheme             = "ui.theme"              // system | light | dark
+	SettingNotifyComplete    = "ui.notify_on_complete" // true | false
 )
 
 // Settings is the typed view of persisted configuration.
@@ -33,6 +35,8 @@ type Settings struct {
 	ConnectTimeoutSec         int
 	StallTimeoutSec           int
 	DownloadDirectory         string
+	Theme                     string // system | light | dark
+	NotifyOnComplete          bool
 }
 
 // DefaultSettings returns Phase 2/3 defaults.
@@ -46,6 +50,8 @@ func DefaultSettings() Settings {
 		ConnectTimeoutSec:         30,
 		StallTimeoutSec:           30,
 		DownloadDirectory:         "",
+		Theme:                     "system",
+		NotifyOnComplete:          false,
 	}
 }
 
@@ -91,6 +97,13 @@ func (s *Store) GetSettings(ctx context.Context) (Settings, error) {
 			}
 		case SettingDownloadDir:
 			out.DownloadDirectory = v
+		case SettingTheme:
+			switch strings.TrimSpace(strings.ToLower(v)) {
+			case "light", "dark", "system":
+				out.Theme = strings.TrimSpace(strings.ToLower(v))
+			}
+		case SettingNotifyComplete:
+			out.NotifyOnComplete = strings.EqualFold(strings.TrimSpace(v), "true") || v == "1"
 		}
 	}
 	return out, rows.Err()
@@ -107,6 +120,15 @@ func (s *Store) SaveSettings(ctx context.Context, cfg Settings) error {
 	if cfg.ProxyMode == netx.ProxyManual && strings.TrimSpace(cfg.ProxyURL) == "" {
 		return fmt.Errorf("manual proxy requires a URL")
 	}
+	theme := strings.TrimSpace(strings.ToLower(cfg.Theme))
+	if theme == "" {
+		theme = "system"
+	}
+	switch theme {
+	case "system", "light", "dark":
+	default:
+		return fmt.Errorf("theme must be system, light, or dark")
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -121,6 +143,8 @@ func (s *Store) SaveSettings(ctx context.Context, cfg Settings) error {
 		SettingConnectTimeoutSec: strconv.Itoa(cfg.ConnectTimeoutSec),
 		SettingStallTimeoutSec:   strconv.Itoa(cfg.StallTimeoutSec),
 		SettingDownloadDir:       cfg.DownloadDirectory,
+		SettingTheme:             theme,
+		SettingNotifyComplete:    strconv.FormatBool(cfg.NotifyOnComplete),
 	}
 	for k, v := range pairs {
 		if _, err := tx.ExecContext(ctx, `

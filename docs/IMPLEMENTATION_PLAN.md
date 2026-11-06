@@ -84,14 +84,15 @@ Build vertically: each milestone should produce something executable and testabl
 
 ## Phase 4 — Desktop MVP
 
-**Status:** implemented (Option 1 scope). Theme selector, native notifications, and detail inspector remain deferred.
+**Status:** implemented + polished (theme, opt-in completion notifications, download details / open / reveal).
 
 **Deliverables**
 
 - Dashboard and add-download flow (`apps/desktop` DownloadService + React UI)
 - Real engine progress events (`odm:download-progress` / `odm:download-changed`)
-- Settings for destination, proxy, concurrency, and connections
+- Settings for destination, proxy, concurrency, connections, theme, and notify-on-complete
 - Cancel/remove keep-or-delete dialogs and resume-mismatch decision UI
+- Download detail dialog with Open file / Show in folder (paths from task rows only)
 - Shared SQLite data dir with the CLI via `internal/appdir`
 
 ## Phase 5 — Cross-platform hardening

@@ -55,6 +55,8 @@ func runSettingsShow(ctx context.Context, args []string) error {
 	fmt.Fprintf(os.Stdout, "download.connect_timeout_sec=%d\n", cfg.ConnectTimeoutSec)
 	fmt.Fprintf(os.Stdout, "download.stall_timeout_sec=%d\n", cfg.StallTimeoutSec)
 	fmt.Fprintf(os.Stdout, "download.directory=%s\n", cfg.DownloadDirectory)
+	fmt.Fprintf(os.Stdout, "ui.theme=%s\n", cfg.Theme)
+	fmt.Fprintf(os.Stdout, "ui.notify_on_complete=%v\n", cfg.NotifyOnComplete)
 	return nil
 }
 
@@ -147,6 +149,25 @@ func applySetting(cfg *storage.Settings, key, value string) error {
 		return nil
 	case storage.SettingDownloadDir, "dir":
 		cfg.DownloadDirectory = value
+		return nil
+	case storage.SettingTheme, "theme":
+		v := strings.ToLower(strings.TrimSpace(value))
+		switch v {
+		case "system", "light", "dark":
+			cfg.Theme = v
+			return nil
+		default:
+			return fmt.Errorf("theme must be system, light, or dark")
+		}
+	case storage.SettingNotifyComplete, "notify-on-complete", "notify":
+		switch strings.ToLower(strings.TrimSpace(value)) {
+		case "true", "1", "yes", "on":
+			cfg.NotifyOnComplete = true
+		case "false", "0", "no", "off":
+			cfg.NotifyOnComplete = false
+		default:
+			return fmt.Errorf("notify_on_complete must be true or false")
+		}
 		return nil
 	default:
 		return fmt.Errorf("unknown settings key %q", key)

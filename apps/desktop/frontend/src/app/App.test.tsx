@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { App } from "./App";
 import { setDesktopApi, type DesktopApi } from "../services/desktopApi";
 
@@ -25,7 +25,14 @@ function mockApi(partial: Partial<DesktopApi> = {}): DesktopApi {
       maxConnectionsPerDownload: 4,
       proxyMode: "system",
       proxyURL: "",
+      theme: "system",
+      notifyOnComplete: false,
     }),
+    getDownload: async () => {
+      throw new Error("not used");
+    },
+    openDownload: async () => undefined,
+    revealDownload: async () => undefined,
     updateSettings: async (s) => s,
     resolveDecision: async () => undefined,
     downloadsAvailable: async () => true,
@@ -36,6 +43,10 @@ function mockApi(partial: Partial<DesktopApi> = {}): DesktopApi {
 
 describe("App", () => {
   beforeEach(() => {
+    setDesktopApi(null);
+  });
+  afterEach(() => {
+    cleanup();
     setDesktopApi(null);
   });
 

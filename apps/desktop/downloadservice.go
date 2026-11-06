@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -217,6 +218,9 @@ func (s *DownloadService) UpdateSettings(dto SettingsDTO) (SettingsDTO, error) {
 	cfg.MaxRetries = existing.MaxRetries
 	cfg.ConnectTimeoutSec = existing.ConnectTimeoutSec
 	cfg.StallTimeoutSec = existing.StallTimeoutSec
+	if cfg.Theme == "" {
+		cfg.Theme = existing.Theme
+	}
 	if err := s.mgr.SaveSettings(context.Background(), cfg); err != nil {
 		return SettingsDTO{}, err
 	}
@@ -232,6 +236,53 @@ func (s *DownloadService) ResolveDecision(decisionID, choice string) error {
 		return fmt.Errorf("decision bridge not available")
 	}
 	return d.Resolve(decisionID, choice)
+}
+
+// GetDownload returns one task DTO (for the detail panel).
+func (s *DownloadService) GetDownload(id string) (DownloadDTO, error) {
+	if err := s.requireReady(); err != nil {
+		return DownloadDTO{}, err
+	}
+	t, err := s.mgr.Get(context.Background(), id)
+	if err != nil {
+		return DownloadDTO{}, err
+	}
+	return taskToDTO(t), nil
+}
+
+// OpenDownload opens a completed file with the OS default app.
+// Path comes from the task row — never from an arbitrary UI string.
+func (s *DownloadService) OpenDownload(id string) error {
+	if err := s.requireReady(); err != nil {
+		return err
+	}
+	t, err := s.mgr.Get(context.Background(), id)
+	if err != nil {
+		return err
+	}
+	if t.State != task.StateCompleted {
+		return fmt.Errorf("open is only available for completed downloads")
+	}
+	return openFile(t.DestinationPath)
+}
+
+// RevealDownload shows the file in the OS file manager.
+func (s *DownloadService) RevealDownload(id string) error {
+	if err := s.requireReady(); err != nil {
+		return err
+	}
+	t, err := s.mgr.Get(context.Background(), id)
+	if err != nil {
+		return err
+	}
+	path := t.DestinationPath
+	if t.State != task.StateCompleted {
+		// Reveal partial when present, else destination parent.
+		if _, err := os.Stat(t.PartPath()); err == nil {
+			path = t.PartPath()
+		}
+	}
+	return revealInFolder(path)
 }
 
 // managerListener adapts DownloadService to manager.Listener without exporting

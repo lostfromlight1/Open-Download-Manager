@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Dialogs } from "@wailsio/runtime";
 import { getDesktopApi } from "../../services/desktopApi";
 import type { SettingsDTO } from "../downloads/downloadTypes";
 
@@ -34,11 +35,28 @@ export function SettingsPage({ onBack, onSaved }: Props) {
       const saved = await api.updateSettings(form);
       setForm(saved);
       onSaved(saved);
-      setSavedMsg("Settings saved. New downloads use these values.");
+      setSavedMsg("Settings saved.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function browseFolder() {
+    if (!form) return;
+    try {
+      const selected = await Dialogs.OpenFile({
+        CanChooseDirectories: true,
+        CanChooseFiles: false,
+        Title: "Default download folder",
+        Directory: form.downloadDirectory || undefined,
+      });
+      if (typeof selected === "string" && selected.trim()) {
+        setForm({ ...form, downloadDirectory: selected });
+      }
+    } catch {
+      // Dialog unavailable in browser-only preview; keep typing the path.
     }
   }
 
@@ -50,7 +68,7 @@ export function SettingsPage({ onBack, onSaved }: Props) {
             Settings
           </h1>
           <p className="text-sm text-[var(--color-text-muted)]">
-            Destination, concurrency, and proxy
+            Destination, appearance, concurrency, and proxy
           </p>
         </div>
         <button
@@ -83,13 +101,22 @@ export function SettingsPage({ onBack, onSaved }: Props) {
             <legend className="text-sm font-semibold">Downloads</legend>
             <label className="block text-sm">
               Default download location
-              <input
-                className="mt-1 w-full rounded-md border border-[var(--color-border)] px-3 py-2 font-mono text-sm"
-                value={form.downloadDirectory}
-                onChange={(e) =>
-                  setForm({ ...form, downloadDirectory: e.target.value })
-                }
-              />
+              <div className="mt-1 flex gap-2">
+                <input
+                  className="w-full rounded-md border border-[var(--color-border)] px-3 py-2 font-mono text-sm"
+                  value={form.downloadDirectory}
+                  onChange={(e) =>
+                    setForm({ ...form, downloadDirectory: e.target.value })
+                  }
+                />
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md border border-[var(--color-border)] px-3 py-2 text-sm"
+                  onClick={() => void browseFolder()}
+                >
+                  Browse
+                </button>
+              </div>
             </label>
             <label className="block text-sm">
               Max active downloads
@@ -120,6 +147,39 @@ export function SettingsPage({ onBack, onSaved }: Props) {
                   })
                 }
               />
+            </label>
+          </fieldset>
+
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-semibold">Appearance</legend>
+            <div className="space-y-2 text-sm">
+              {(
+                [
+                  ["system", "System"],
+                  ["light", "Light"],
+                  ["dark", "Dark"],
+                ] as const
+              ).map(([value, label]) => (
+                <label key={value} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="theme"
+                    checked={form.theme === value}
+                    onChange={() => setForm({ ...form, theme: value })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.notifyOnComplete}
+                onChange={(e) =>
+                  setForm({ ...form, notifyOnComplete: e.target.checked })
+                }
+              />
+              Notify when a download completes (opt-in)
             </label>
           </fieldset>
 

@@ -53,6 +53,8 @@ export interface SettingsDTO {
   maxConnectionsPerDownload: number;
   proxyMode: string;
   proxyURL: string;
+  theme: string;
+  notifyOnComplete: boolean;
 }
 
 export type FilterTab =

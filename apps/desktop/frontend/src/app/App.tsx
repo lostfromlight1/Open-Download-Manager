@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { DownloadsPage } from "../features/downloads/DownloadsPage";
 import type { SettingsDTO } from "../features/downloads/downloadTypes";
 import { SettingsPage } from "../features/settings/SettingsPage";
+import { applyTheme, watchSystemTheme } from "../lib/theme";
 import { getDesktopApi } from "../services/desktopApi";
 
 type Page = "downloads" | "settings";
@@ -10,7 +11,7 @@ export function App() {
   const [page, setPage] = useState<Page>("downloads");
   const [bootError, setBootError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [defaultDir, setDefaultDir] = useState("");
+  const [settings, setSettings] = useState<SettingsDTO | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -22,8 +23,9 @@ export function App() {
           setBootError(msg || "Download manager is not ready");
           return;
         }
-        const settings = await api.getSettings();
-        setDefaultDir(settings.downloadDirectory || "");
+        const loaded = await api.getSettings();
+        applyTheme(loaded.theme || "system");
+        setSettings(loaded);
         setReady(true);
       } catch (e) {
         setBootError(e instanceof Error ? e.message : String(e));
@@ -31,8 +33,14 @@ export function App() {
     })();
   }, []);
 
-  function handleSettingsSaved(settings: SettingsDTO) {
-    setDefaultDir(settings.downloadDirectory || "");
+  useEffect(() => {
+    if (settings?.theme !== "system") return;
+    return watchSystemTheme(() => applyTheme("system"));
+  }, [settings?.theme]);
+
+  function handleSettingsSaved(next: SettingsDTO) {
+    applyTheme(next.theme || "system");
+    setSettings(next);
   }
 
   if (bootError) {
@@ -55,7 +63,7 @@ export function App() {
     );
   }
 
-  if (!ready) {
+  if (!ready || !settings) {
     return (
       <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-6">
         <p className="text-sm text-[var(--color-text-muted)]">
@@ -76,7 +84,8 @@ export function App() {
 
   return (
     <DownloadsPage
-      defaultDir={defaultDir}
+      defaultDir={settings.downloadDirectory || ""}
+      notifyOnComplete={settings.notifyOnComplete}
       onOpenSettings={() => setPage("settings")}
     />
   );

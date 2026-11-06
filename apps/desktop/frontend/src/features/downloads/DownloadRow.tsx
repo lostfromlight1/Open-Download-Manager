@@ -18,6 +18,7 @@ type Props = {
   onResume: (id: string) => void;
   onCancel: (id: string) => void;
   onRemove: (id: string) => void;
+  onDetails: (id: string) => void;
 };
 
 export function DownloadRow({
@@ -27,6 +28,7 @@ export function DownloadRow({
   onResume,
   onCancel,
   onRemove,
+  onDetails,
 }: Props) {
   const busy = busyId === d.id;
   const pct = progressPercent(d.downloadedBytes, d.totalBytes);
@@ -47,9 +49,13 @@ export function DownloadRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-[var(--color-text)]">
+            <button
+              type="button"
+              className="truncate text-left text-sm font-semibold text-[var(--color-text)] hover:underline"
+              onClick={() => onDetails(d.id)}
+            >
               {d.fileName}
-            </h3>
+            </button>
             <StatusBadge status={d.status} />
           </div>
           <p className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">
@@ -57,6 +63,14 @@ export function DownloadRow({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-[var(--color-border)] px-2.5 py-1 text-xs disabled:opacity-50"
+            disabled={busy}
+            onClick={() => onDetails(d.id)}
+          >
+            Details
+          </button>
           {canPause ? (
             <button
               type="button"

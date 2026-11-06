@@ -277,7 +277,6 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 
 **Not implemented yet (later phases)**
 
-- Theme selector / native completion notifications / download detail inspector
 - Interactive TTY prompts (CLI currently uses explicit flags for decisions)
 - Per-segment crash resume wired through the manager (segment rows exist; engine clears failed segmented `.part`s for safety)
 - Downloads continuing after the process exits (Phase 7 background service)

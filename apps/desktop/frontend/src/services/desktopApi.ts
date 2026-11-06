@@ -18,6 +18,9 @@ export interface DesktopApi {
   getSettings(): Promise<SettingsDTO>;
   updateSettings(settings: SettingsDTO): Promise<SettingsDTO>;
   resolveDecision(decisionId: string, choice: string): Promise<void>;
+  getDownload(id: string): Promise<DownloadDTO>;
+  openDownload(id: string): Promise<void>;
+  revealDownload(id: string): Promise<void>;
   downloadsAvailable(): Promise<boolean>;
   statusMessage(): Promise<string>;
 }
@@ -48,6 +51,9 @@ async function loadBindings(): Promise<DesktopApi> {
     updateSettings: (settings) => downloads.UpdateSettings(settings),
     resolveDecision: (decisionId, choice) =>
       downloads.ResolveDecision(decisionId, choice).then(() => undefined),
+    getDownload: (id) => downloads.GetDownload(id),
+    openDownload: (id) => downloads.OpenDownload(id).then(() => undefined),
+    revealDownload: (id) => downloads.RevealDownload(id).then(() => undefined),
     downloadsAvailable: () => shell.DownloadsAvailable(),
     statusMessage: () => shell.StatusMessage(),
   };

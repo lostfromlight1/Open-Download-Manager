@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { notifyDownloadComplete } from "../../lib/notify";
 import { getDesktopApi } from "../../services/desktopApi";
 import {
   subscribeChanged,
@@ -6,6 +7,7 @@ import {
   subscribeProgress,
 } from "../../services/desktopEvents";
 import { AddDownloadDialog } from "./AddDownloadDialog";
+import { DownloadDetail } from "./DownloadDetail";
 import { DownloadRow } from "./DownloadRow";
 import {
   downloadsReducer,
@@ -18,13 +20,19 @@ import { isActiveStatus } from "./downloadTypes";
 
 type Props = {
   defaultDir: string;
+  notifyOnComplete: boolean;
   onOpenSettings: () => void;
 };
 
-export function DownloadsPage({ defaultDir, onOpenSettings }: Props) {
+export function DownloadsPage({
+  defaultDir,
+  notifyOnComplete,
+  onOpenSettings,
+}: Props) {
   const [state, dispatch] = useReducer(downloadsReducer, initialDownloadsState);
   const [filter, setFilter] = useState<FilterTab>("all");
   const [showAdd, setShowAdd] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [fileDialog, setFileDialog] = useState<{
     mode: "cancel" | "remove";
     download: DownloadDTO;
@@ -32,6 +40,12 @@ export function DownloadsPage({ defaultDir, onOpenSettings }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
+  const notifyRef = useRef(notifyOnComplete);
+  const prevStatus = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    notifyRef.current = notifyOnComplete;
+  }, [notifyOnComplete]);
 
   const refresh = useCallback(async () => {
     try {
@@ -53,9 +67,24 @@ export function DownloadsPage({ defaultDir, onOpenSettings }: Props) {
     const offProgress = subscribeProgress((event) =>
       dispatch({ type: "progress", event }),
     );
-    const offChanged = subscribeChanged((event) =>
-      dispatch({ type: "changed", event }),
-    );
+    const offChanged = subscribeChanged((event) => {
+      const prev = prevStatus.current[event.taskId];
+      const next = event.download?.status;
+      if (
+        notifyRef.current &&
+        next === "completed" &&
+        prev &&
+        prev !== "completed"
+      ) {
+        void notifyDownloadComplete(event.download?.fileName ?? "Download");
+      }
+      if (event.download) {
+        prevStatus.current[event.taskId] = event.download.status;
+      } else {
+        delete prevStatus.current[event.taskId];
+      }
+      dispatch({ type: "changed", event });
+    });
     const offDecision = subscribeDecision((event) =>
       dispatch({ type: "decision", event }),
     );
@@ -65,6 +94,12 @@ export function DownloadsPage({ defaultDir, onOpenSettings }: Props) {
       offDecision();
     };
   }, [refresh]);
+
+  useEffect(() => {
+    for (const d of Object.values(state.byId)) {
+      prevStatus.current[d.id] = d.status;
+    }
+  }, [state.byId]);
 
   const downloads = useMemo(() => {
     const list: DownloadDTO[] = [];
@@ -237,6 +272,7 @@ export function DownloadsPage({ defaultDir, onOpenSettings }: Props) {
             key={d.id}
             download={d}
             busyId={busyId}
+            onDetails={(id) => setDetailId(id)}
             onPause={(id) =>
               void runCommand(id, async () => {
                 const api = await getDesktopApi();
@@ -323,6 +359,26 @@ export function DownloadsPage({ defaultDir, onOpenSettings }: Props) {
               setDecisionBusy(false);
             }
           }}
+        />
+      ) : null}
+
+      {detailId && state.byId[detailId] ? (
+        <DownloadDetail
+          download={state.byId[detailId]}
+          busy={busyId === detailId}
+          onClose={() => setDetailId(null)}
+          onOpen={() =>
+            void runCommand(detailId, async () => {
+              const api = await getDesktopApi();
+              await api.openDownload(detailId);
+            })
+          }
+          onReveal={() =>
+            void runCommand(detailId, async () => {
+              const api = await getDesktopApi();
+              await api.revealDownload(detailId);
+            })
+          }
         />
       ) : null}
     </div>

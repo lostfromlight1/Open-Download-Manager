@@ -24,7 +24,7 @@ ODM is a desktop download manager with a reusable **Go** download engine, a **Re
 
 ## Current project status
 
-Phase 4 desktop MVP: Wails UI talks to the same `internal/manager` + SQLite store as the CLI (dashboard, add/pause/resume/cancel/remove, live progress events, destination/proxy/concurrency settings, resume-mismatch decisions). CLI Phase 3 features (`--connections`, queue, settings) remain available.
+Phase 4 desktop MVP: Wails UI talks to the same `internal/manager` + SQLite store as the CLI (dashboard, add/pause/resume/cancel/remove, live progress, theme, opt-in completion notifications, download details with open/reveal, destination/proxy/concurrency settings, resume-mismatch decisions). CLI Phase 3 features (`--connections`, queue, settings) remain available.
 
 License: MIT.
 

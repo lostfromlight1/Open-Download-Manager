@@ -86,7 +86,6 @@ Decide early:
 Postpone safely:
 
 - Per-segment crash-resume orchestration in the manager (table exists; engine still clears failed segmented partials)
-- Theme / notifications / download detail inspector polish
 - Daemon installer
 - Browser native messaging
 - Concrete tunnel protocols

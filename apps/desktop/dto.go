@@ -39,6 +39,8 @@ type SettingsDTO struct {
 	MaxConnectionsPerDownload int    `json:"maxConnectionsPerDownload"`
 	ProxyMode                 string `json:"proxyMode"`
 	ProxyURL                  string `json:"proxyURL"`
+	Theme                     string `json:"theme"`            // system | light | dark
+	NotifyOnComplete          bool   `json:"notifyOnComplete"` // opt-in completion toasts
 }
 
 // ProgressEventDTO is emitted on odm:download-progress.
@@ -85,12 +87,18 @@ func taskToDTO(t task.Task) DownloadDTO {
 }
 
 func settingsToDTO(s storage.Settings) SettingsDTO {
+	theme := s.Theme
+	if theme == "" {
+		theme = "system"
+	}
 	return SettingsDTO{
 		DownloadDirectory:         s.DownloadDirectory,
 		MaxActiveDownloads:        s.MaxActiveDownloads,
 		MaxConnectionsPerDownload: s.MaxConnectionsPerDownload,
 		ProxyMode:                 string(s.ProxyMode),
 		ProxyURL:                  s.ProxyURL,
+		Theme:                     theme,
+		NotifyOnComplete:          s.NotifyOnComplete,
 	}
 }
 
@@ -100,6 +108,8 @@ func settingsFromDTO(d SettingsDTO) (storage.Settings, error) {
 	cfg.MaxActiveDownloads = d.MaxActiveDownloads
 	cfg.MaxConnectionsPerDownload = d.MaxConnectionsPerDownload
 	cfg.ProxyURL = d.ProxyURL
+	cfg.Theme = d.Theme
+	cfg.NotifyOnComplete = d.NotifyOnComplete
 
 	switch netx.ProxyMode(d.ProxyMode) {
 	case netx.ProxySystem, "":
