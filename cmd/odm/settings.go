@@ -50,6 +50,7 @@ func runSettingsShow(ctx context.Context, args []string) error {
 	fmt.Fprintf(os.Stdout, "proxy.mode=%s\n", cfg.ProxyMode)
 	fmt.Fprintf(os.Stdout, "proxy.url=%s\n", cfg.ProxyURL)
 	fmt.Fprintf(os.Stdout, "queue.max_active=%d\n", cfg.MaxActiveDownloads)
+	fmt.Fprintf(os.Stdout, "download.max_connections=%d\n", cfg.MaxConnectionsPerDownload)
 	fmt.Fprintf(os.Stdout, "download.max_retries=%d\n", cfg.MaxRetries)
 	fmt.Fprintf(os.Stdout, "download.connect_timeout_sec=%d\n", cfg.ConnectTimeoutSec)
 	fmt.Fprintf(os.Stdout, "download.stall_timeout_sec=%d\n", cfg.StallTimeoutSec)
@@ -115,6 +116,13 @@ func applySetting(cfg *storage.Settings, key, value string) error {
 			return fmt.Errorf("max active must be a positive integer")
 		}
 		cfg.MaxActiveDownloads = n
+		return nil
+	case storage.SettingMaxConnections, "max-connections", "connections":
+		n, err := strconv.Atoi(value)
+		if err != nil || n <= 0 {
+			return fmt.Errorf("max connections must be a positive integer")
+		}
+		cfg.MaxConnectionsPerDownload = n
 		return nil
 	case storage.SettingMaxRetries, "max-retries":
 		n, err := strconv.Atoi(value)

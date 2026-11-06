@@ -325,10 +325,15 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 	}
 
 	proxy := netx.ProxyConfig{Mode: cfg.ProxyMode, URL: cfg.ProxyURL}
+	connections := cfg.MaxConnectionsPerDownload
+	if connections < 1 {
+		connections = 1
+	}
 	result, err := engine.Download(ctx, engine.Options{
 		URL:            t.URL,
 		Destination:    t.DestinationPath,
 		ForceRestart:   forceRestart,
+		Connections:    connections,
 		Proxy:          proxy,
 		MaxRetries:     cfg.MaxRetries,
 		ConnectTimeout: time.Duration(cfg.ConnectTimeoutSec) * time.Second,

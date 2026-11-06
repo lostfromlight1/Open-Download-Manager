@@ -13,9 +13,10 @@ import (
 
 // Settings keys stored in the settings table.
 const (
-	SettingProxyMode         = "proxy.mode"       // system | off | manual
-	SettingProxyURL          = "proxy.url"        // used when mode=manual
-	SettingMaxActive         = "queue.max_active" // concurrent downloads
+	SettingProxyMode         = "proxy.mode"               // system | off | manual
+	SettingProxyURL          = "proxy.url"                // used when mode=manual
+	SettingMaxActive         = "queue.max_active"         // concurrent downloads
+	SettingMaxConnections    = "download.max_connections" // per-download Range workers
 	SettingMaxRetries        = "download.max_retries"
 	SettingConnectTimeoutSec = "download.connect_timeout_sec"
 	SettingStallTimeoutSec   = "download.stall_timeout_sec"
@@ -24,25 +25,27 @@ const (
 
 // Settings is the typed view of persisted configuration.
 type Settings struct {
-	ProxyMode          netx.ProxyMode
-	ProxyURL           string
-	MaxActiveDownloads int
-	MaxRetries         int
-	ConnectTimeoutSec  int
-	StallTimeoutSec    int
-	DownloadDirectory  string
+	ProxyMode                 netx.ProxyMode
+	ProxyURL                  string
+	MaxActiveDownloads        int
+	MaxConnectionsPerDownload int
+	MaxRetries                int
+	ConnectTimeoutSec         int
+	StallTimeoutSec           int
+	DownloadDirectory         string
 }
 
-// DefaultSettings returns Phase 2 defaults.
+// DefaultSettings returns Phase 2/3 defaults.
 func DefaultSettings() Settings {
 	return Settings{
-		ProxyMode:          netx.ProxySystem,
-		ProxyURL:           "",
-		MaxActiveDownloads: 2,
-		MaxRetries:         5,
-		ConnectTimeoutSec:  30,
-		StallTimeoutSec:    30,
-		DownloadDirectory:  "",
+		ProxyMode:                 netx.ProxySystem,
+		ProxyURL:                  "",
+		MaxActiveDownloads:        2,
+		MaxConnectionsPerDownload: 4, // Phase 3: try segmented when Range verifies
+		MaxRetries:                5,
+		ConnectTimeoutSec:         30,
+		StallTimeoutSec:           30,
+		DownloadDirectory:         "",
 	}
 }
 
@@ -70,6 +73,10 @@ func (s *Store) GetSettings(ctx context.Context) (Settings, error) {
 			if n, err := strconv.Atoi(v); err == nil && n > 0 {
 				out.MaxActiveDownloads = n
 			}
+		case SettingMaxConnections:
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				out.MaxConnectionsPerDownload = n
+			}
 		case SettingMaxRetries:
 			if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 				out.MaxRetries = n
@@ -94,6 +101,9 @@ func (s *Store) SaveSettings(ctx context.Context, cfg Settings) error {
 	if cfg.MaxActiveDownloads <= 0 {
 		return fmt.Errorf("max active downloads must be > 0")
 	}
+	if cfg.MaxConnectionsPerDownload <= 0 {
+		return fmt.Errorf("max connections per download must be > 0")
+	}
 	if cfg.ProxyMode == netx.ProxyManual && strings.TrimSpace(cfg.ProxyURL) == "" {
 		return fmt.Errorf("manual proxy requires a URL")
 	}
@@ -106,6 +116,7 @@ func (s *Store) SaveSettings(ctx context.Context, cfg Settings) error {
 		SettingProxyMode:         string(cfg.ProxyMode),
 		SettingProxyURL:          cfg.ProxyURL,
 		SettingMaxActive:         strconv.Itoa(cfg.MaxActiveDownloads),
+		SettingMaxConnections:    strconv.Itoa(cfg.MaxConnectionsPerDownload),
 		SettingMaxRetries:        strconv.Itoa(cfg.MaxRetries),
 		SettingConnectTimeoutSec: strconv.Itoa(cfg.ConnectTimeoutSec),
 		SettingStallTimeoutSec:   strconv.Itoa(cfg.StallTimeoutSec),

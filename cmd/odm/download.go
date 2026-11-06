@@ -50,6 +50,7 @@ func runDownload(ctx context.Context, args []string) error {
 		proxy          string
 		forceRestart   bool
 		maxRetries     int
+		connections    int
 		stallTimeout   time.Duration
 		connectTimeout time.Duration
 	)
@@ -63,6 +64,7 @@ func runDownload(ctx context.Context, args []string) error {
 	fs.StringVar(&proxy, "proxy", "system", "system, off, or a proxy URL")
 	fs.BoolVar(&forceRestart, "force-restart", false, "ignore partial files and restart")
 	fs.IntVar(&maxRetries, "max-retries", 5, "retries after the first attempt")
+	fs.IntVar(&connections, "connections", 1, "max parallel connections (1=single-stream; >1 tries segmented Range)")
 
 	// Duration flags accept values like "30s", "2m", "500ms".
 	fs.DurationVar(&stallTimeout, "stall-timeout", 30*time.Second, "max idle time between received bytes")
@@ -100,10 +102,15 @@ func runDownload(ctx context.Context, args []string) error {
 
 	// engine.Options is a struct literal. Field names are written explicitly
 	// so the call stays readable as the Options type grows.
+	if connections < 1 {
+		return fmt.Errorf("--connections must be >= 1")
+	}
+
 	result, err := engine.Download(ctx, engine.Options{
 		URL:                   rawURL,
 		Destination:           dest,
 		ForceRestart:          forceRestart,
+		Connections:           connections,
 		Proxy:                 netx.ProxyConfig{Mode: mode, URL: proxyURL},
 		MaxRetries:            maxRetries,
 		StallTimeout:          stallTimeout,
@@ -128,7 +135,8 @@ func runDownload(ctx context.Context, args []string) error {
 func reorderDownloadArgs(args []string) []string {
 	valueFlags := map[string]bool{
 		"o": true, "output": true, "dir": true, "proxy": true,
-		"max-retries": true, "stall-timeout": true, "connect-timeout": true,
+		"max-retries": true, "connections": true,
+		"stall-timeout": true, "connect-timeout": true,
 	}
 
 	var flags, positionals []string
