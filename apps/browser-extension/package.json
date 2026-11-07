@@ -4,7 +4,7 @@
   "version": "0.5.0",
   "description": "ODM WebExtension (Chrome/Firefox) — native messaging + optional download interception",
   "scripts": {
-    "test": "node --test intercept.test.js",
+    "test": "node --test intercept.test.js youtube-button.test.js",
     "pack:chrome": "node -e \"console.log('Load unpacked from apps/browser-extension (manifest.json)')\"",
     "pack:firefox": "node -e \"console.log('Copy manifest.firefox.json over manifest.json for Firefox temporary add-on')\""
   }

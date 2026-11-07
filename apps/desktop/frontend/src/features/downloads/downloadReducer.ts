@@ -59,14 +59,30 @@ export function downloadsReducer(
       if (!cur) return state;
       // Keep the last known total when a progress tick omits it (e.g. between
       // yt-dlp streams). Never let downloadedBytes move backwards in the UI.
-      const nextTotal =
-        action.event.totalBytes != null && action.event.totalBytes > 0
-          ? action.event.totalBytes
-          : cur.totalBytes;
+      // If we already reached the last known total while still active, drop the
+      // total so the row does not sit at a fake "1.4 GB / 1.4 GB 100%".
       const nextDownloaded = Math.max(
         cur.downloadedBytes,
         action.event.downloadedBytes,
       );
+      let nextTotal =
+        action.event.totalBytes != null && action.event.totalBytes > 0
+          ? action.event.totalBytes
+          : cur.totalBytes;
+      const status = action.event.status || cur.status;
+      const stillActive =
+        status === "downloading" ||
+        status === "inspecting" ||
+        status === "finalizing";
+      if (
+        stillActive &&
+        nextTotal != null &&
+        nextTotal > 0 &&
+        nextDownloaded >= nextTotal &&
+        (action.event.totalBytes == null || action.event.totalBytes <= 0)
+      ) {
+        nextTotal = null;
+      }
       return {
         ...state,
         byId: {
@@ -76,7 +92,7 @@ export function downloadsReducer(
             downloadedBytes: nextDownloaded,
             totalBytes: nextTotal,
             bytesPerSecond: action.event.bytesPerSecond,
-            status: action.event.status || cur.status,
+            status,
           },
         },
       };

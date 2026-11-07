@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  displayProgressPercent,
   etaSeconds,
   formatBytes,
   formatMbps,
   formatSpeed,
+  isProgressExhaustedWhileActive,
   progressPercent,
 } from "./format";
 
@@ -30,6 +32,17 @@ describe("format helpers", () => {
     expect(progressPercent(50, null)).toBeNull();
     expect(etaSeconds(50, 100, 10)).toBe(5);
     expect(etaSeconds(50, null, 10)).toBeNull();
+  });
+
+  it("caps active downloads below 100 percent", () => {
+    expect(displayProgressPercent(1400, 1400, "downloading")).toBe(99);
+    expect(displayProgressPercent(1400, 1400, "completed")).toBe(100);
+    expect(isProgressExhaustedWhileActive(1400, 1400, "downloading")).toBe(
+      true,
+    );
+    expect(isProgressExhaustedWhileActive(1400, 1400, "completed")).toBe(
+      false,
+    );
   });
 });
 

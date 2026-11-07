@@ -61,6 +61,44 @@ export function progressPercent(
   return Math.min(100, Math.max(0, (100 * downloaded) / total));
 }
 
+/**
+ * Progress for the UI. Active downloads must not show 100% — yt-dlp often
+ * finishes one stream (video) at 100% of its size while audio/merge still run.
+ */
+export function displayProgressPercent(
+  downloaded: number,
+  total: number | null | undefined,
+  status: string,
+): number | null {
+  const pct = progressPercent(downloaded, total);
+  if (pct == null) return null;
+  if (
+    pct >= 100 &&
+    (status === "downloading" ||
+      status === "inspecting" ||
+      status === "finalizing")
+  ) {
+    return 99;
+  }
+  return pct;
+}
+
+/** True when byte counters look "done" but the task is still running. */
+export function isProgressExhaustedWhileActive(
+  downloaded: number,
+  total: number | null | undefined,
+  status: string,
+): boolean {
+  if (
+    status !== "downloading" &&
+    status !== "inspecting" &&
+    status !== "finalizing"
+  ) {
+    return false;
+  }
+  return total != null && total > 0 && downloaded >= total;
+}
+
 export function hostnameFromUrl(url: string): string {
   try {
     return new URL(url).hostname || url;

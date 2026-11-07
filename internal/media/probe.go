@@ -64,6 +64,7 @@ func Probe(ctx context.Context, tools Tools, rawURL string) (ProbeResult, error)
 		args = append(args, "--no-warnings", pageURL)
 
 		cmd := exec.CommandContext(ctx, tools.YtDlpPath, args...)
+		hideHelperConsole(cmd)
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr

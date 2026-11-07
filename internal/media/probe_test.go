@@ -1,6 +1,10 @@
 package media
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestParseProbeJSONVideo(t *testing.T) {
 	t.Parallel()
@@ -58,8 +62,55 @@ func TestParseProgressLine(t *testing.T) {
 	if !ok {
 		t.Fatal("expected parse")
 	}
+	if ev.Total <= 0 || ev.BytesPerSec <= 0 || ev.Downloaded <= 0 {
+		t.Fatalf("%+v", ev)
+	}
+}
+
+func TestParseProgressLineApproxTotal(t *testing.T) {
+	t.Parallel()
+	// yt-dlp DASH lines often use "of ~  NNiB" with spaces after the tilde.
+	ev, ok := ParseProgressLine(`[download]  45.2% of ~  3.00GiB at  1.90MiB/s ETA 00:05`)
+	if !ok {
+		t.Fatal("expected parse")
+	}
+	if ev.Total < 3*1024*1024*1024 {
+		t.Fatalf("total not parsed from approx size: %+v", ev)
+	}
+	if ev.Downloaded <= 0 || ev.BytesPerSec <= 0 {
+		t.Fatalf("%+v", ev)
+	}
+}
+
+func TestParseProgressLineZeroPercent(t *testing.T) {
+	t.Parallel()
+	ev, ok := ParseProgressLine(`[download]   0.0% of  118.62MiB at  250.71KiB/s ETA 08:05`)
+	if !ok {
+		t.Fatal("expected parse")
+	}
 	if ev.Total <= 0 || ev.BytesPerSec <= 0 {
 		t.Fatalf("%+v", ev)
+	}
+	if ev.Downloaded != 0 {
+		t.Fatalf("want 0 downloaded at 0%%, got %d", ev.Downloaded)
+	}
+}
+
+func TestEstimateMediaBytesOnDisk(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	mustWrite := func(name string, n int) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), make([]byte, n), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustWrite("clip [abc123].f399.mp4.part", 1000)
+	mustWrite("clip [abc123].f140.m4a", 200)
+	mustWrite("other [zzzz].mp4", 9999)
+	got := estimateMediaBytesOnDisk(dir, "abc123")
+	if got != 1200 {
+		t.Fatalf("got %d want 1200", got)
 	}
 }
 

@@ -1,12 +1,13 @@
 import { ProgressBar } from "../../components/ProgressBar";
 import { StatusBadge } from "../../components/StatusBadge";
 import {
+  displayProgressPercent,
   etaSeconds,
   formatBytes,
   formatEta,
   formatSpeed,
   hostnameFromUrl,
-  progressPercent,
+  isProgressExhaustedWhileActive,
 } from "../../lib/format";
 import type { DownloadDTO } from "./downloadTypes";
 import { isActiveStatus } from "./downloadTypes";
@@ -38,14 +39,26 @@ export function DownloadRow({
   onDetails,
 }: Props) {
   const busy = busyId === d.id || busyId === "bulk";
-  const pct = progressPercent(d.downloadedBytes, d.totalBytes);
-  const eta = etaSeconds(
+  const pct = displayProgressPercent(
     d.downloadedBytes,
     d.totalBytes,
-    d.bytesPerSecond ?? null,
+    d.status,
   );
-  const sizeLabel =
-    d.totalBytes != null
+  const exhausted = isProgressExhaustedWhileActive(
+    d.downloadedBytes,
+    d.totalBytes,
+    d.status,
+  );
+  const eta = exhausted
+    ? null
+    : etaSeconds(
+        d.downloadedBytes,
+        d.totalBytes,
+        d.bytesPerSecond ?? null,
+      );
+  const sizeLabel = exhausted
+    ? `${formatBytes(d.downloadedBytes)} · finishing…`
+    : d.totalBytes != null
       ? `${formatBytes(d.downloadedBytes)} / ${formatBytes(d.totalBytes)}`
       : formatBytes(d.downloadedBytes);
 

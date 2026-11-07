@@ -40,6 +40,7 @@ You can change any of these later in **Settings**.
 2. Chrome/Edge: open `chrome://extensions` → Developer mode → **Load unpacked** → select the `browser-extension` folder from the release zip (or the repo’s `apps/browser-extension`).
 3. Copy the extension ID into Settings → **Chrome extension ID** if prompted, then Save.
 4. Open the extension popup → confirm status is connected → optionally enable **Send browser downloads to ODM**.
+5. YouTube: open a watch page and use the teal **↓ ODM** button (or the context menu). If you reload/update the extension, **refresh the YouTube tab** first — otherwise the button shows “Extension was reloaded”.
 
 Firefox: use `manifest.firefox.json` as `manifest.json` when loading the temporary add-on (see contributor docs for details).
 
@@ -47,7 +48,7 @@ Firefox: use `manifest.firefox.json` as `manifest.json` when loading the tempora
 
 1. Enable **YouTube downloads** in Settings or the wizard.
 2. Keep ODM open while helpers download the first time.
-3. Add a YouTube URL → choose format / playlist entries.
+3. Add a YouTube URL → choose format / playlist entries. Only one active/queued download per video is allowed (avoids fragment collisions).
 
 Only download content you have rights to use.
 

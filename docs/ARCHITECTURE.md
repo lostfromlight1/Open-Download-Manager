@@ -42,7 +42,7 @@ Browser extension ---> Native Messaging host ---> enqueue API
 
 ### Engine packages (`internal/...`)
 
-Reusable Go libraries. They must not import Wails. They own transfer mechanics, byte-range validation, segment execution, safe file writing, proxy-aware transport, and persistence interfaces. `internal/media` owns YouTube probe/download via managed yt-dlp; the HTTP engine is unchanged for ordinary files.
+Reusable Go libraries. They must not import Wails. They own transfer mechanics, byte-range validation, segment execution, safe file writing, proxy-aware transport, and persistence interfaces. `internal/media` owns YouTube probe/download via managed yt-dlp; the HTTP engine is unchanged for ordinary files. Media tasks write into `.odm-partial/<taskID>/` then promote the finished file into the user download folder so concurrent jobs cannot share fragment filenames.
 
 ### Desktop (`apps/desktop`)
 

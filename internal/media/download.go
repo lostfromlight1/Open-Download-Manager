@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -32,8 +33,9 @@ type DownloadOptions struct {
 
 var (
 	reProgressPct    = regexp.MustCompile(`\[download\]\s+([0-9.]+)%`)
-	reProgressOf     = regexp.MustCompile(`of\s+~?([0-9.]+)([KMG])i?B`)
-	reProgressRate   = regexp.MustCompile(`at\s+([0-9.]+)([KMG])i?B/s`)
+	// yt-dlp prints both "of 10.00MiB" and "of ~  3.00GiB" (tilde + spaces).
+	reProgressOf   = regexp.MustCompile(`of\s+~?\s*([0-9.]+)\s*([KMG])i?B`)
+	reProgressRate = regexp.MustCompile(`at\s+([0-9.]+)\s*([KMG])i?B/s`)
 	reFragmentInName = regexp.MustCompile(`(?i)\.f\d+([.-]|$)`)
 	reYTDLPVideoID   = regexp.MustCompile(`\[([A-Za-z0-9_-]{6,})\]`)
 )
@@ -95,6 +97,8 @@ func Download(ctx context.Context, opts DownloadOptions) (finalPath string, err 
 		// Restrict filenames so Windows Explorer can open them (no | 🔥 etc.).
 		"--restrict-filenames",
 		"--merge-output-format", "mp4",
+		// One fragment at a time avoids Windows races on .part-FragN files.
+		"--concurrent-fragments", "1",
 	}
 	if opts.Tools.FFmpegReady() {
 		base = append(base, "--ffmpeg-location", filepath.Dir(opts.Tools.FFmpegPath))
@@ -125,6 +129,7 @@ func Download(ctx context.Context, opts DownloadOptions) (finalPath string, err 
 
 func runYtDlpDownload(ctx context.Context, opts DownloadOptions, runArgs []string, videoID string) (string, error) {
 	cmd := exec.CommandContext(ctx, opts.Tools.YtDlpPath, runArgs...)
+	hideHelperConsole(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", err
@@ -135,6 +140,32 @@ func runYtDlpDownload(ctx context.Context, opts DownloadOptions, runArgs []strin
 		return "", err
 	}
 
+	// Poll on-disk size while yt-dlp runs so the UI does not sit at "0 B"
+	// when progress lines omit totals (or only report speed).
+	diskDone := make(chan struct{})
+	if opts.OnProgress != nil {
+		go func() {
+			ticker := time.NewTicker(400 * time.Millisecond)
+			defer ticker.Stop()
+			var last int64
+			for {
+				select {
+				case <-diskDone:
+					return
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					w := estimateMediaBytesOnDisk(opts.DestDir, videoID)
+					if w > last {
+						last = w
+						opts.OnProgress(ProgressEvent{Downloaded: w})
+					}
+				}
+			}
+		}()
+		defer close(diskDone)
+	}
+
 	sc := bufio.NewScanner(stdout)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var errLines []string
@@ -143,7 +174,21 @@ func runYtDlpDownload(ctx context.Context, opts DownloadOptions, runArgs []strin
 		line := sc.Text()
 		if ev, ok := ParseProgressLine(line); ok {
 			if opts.OnProgress != nil {
-				opts.OnProgress(acc.Accept(ev))
+				out := acc.Accept(ev)
+				// Prefer real bytes on disk when yt-dlp omits totals (common on
+				// some DASH/HLS lines) so the UI does not sit at "0 B" with speed.
+				if written := estimateMediaBytesOnDisk(opts.DestDir, videoID); written > out.Downloaded {
+					out.Downloaded = written
+					if out.Total > 0 && out.Total < written {
+						out.Total = written
+					}
+				}
+				// One stream can hit 100% while audio/merge still runs — clear
+				// total so callers do not advertise a finished download yet.
+				if out.Total > 0 && out.Downloaded >= out.Total {
+					out.Total = 0
+				}
+				opts.OnProgress(out)
 			}
 			continue
 		}
@@ -207,6 +252,8 @@ func FormatUserMediaError(raw string) string {
 		return "YouTube blocked this helper build — open Settings → Check for helper updates"
 	case strings.Contains(low, "ffmpeg") && (strings.Contains(low, "not found") || strings.Contains(low, "merge")):
 		return "ffmpeg merge failed — open Settings → Check for helper updates, then retry"
+	case strings.Contains(low, "no such file") && (strings.Contains(low, "frag") || strings.Contains(low, ".part")):
+		return "Missing video fragment — usually another download of the same video collided. Remove duplicates and retry"
 	case strings.Contains(low, "merge incomplete") || strings.Contains(low, "fragments"):
 		return "Download finished as separate video/audio pieces but merge failed — ensure ffmpeg is ready and retry"
 	case strings.Contains(low, "private video"), strings.Contains(low, "login required"):
@@ -280,10 +327,49 @@ func ParseProgressLine(line string) (ProgressEvent, bool) {
 		rate = float64(parseSize(rm[1], rm[2]))
 	}
 	var downloaded int64
-	if total > 0 && pct > 0 {
+	if total > 0 && pct >= 0 {
 		downloaded = int64(float64(total) * pct / 100.0)
 	}
 	return ProgressEvent{Downloaded: downloaded, Total: total, BytesPerSec: rate}, true
+}
+
+// estimateMediaBytesOnDisk sums partial/final media files for a video id so the
+// UI can show progress even when yt-dlp progress lines lack a total size.
+func estimateMediaBytesOnDisk(dir, videoID string) int64 {
+	if strings.TrimSpace(dir) == "" {
+		return 0
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0
+	}
+	id := strings.TrimSpace(videoID)
+	var sum int64
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if id != "" && !strings.Contains(strings.ToLower(name), strings.ToLower(id)) {
+			continue
+		}
+		low := strings.ToLower(name)
+		looksMedia := isPlayableMediaExt(name) ||
+			strings.HasSuffix(low, ".part") ||
+			strings.HasSuffix(low, ".ytdl") ||
+			strings.Contains(low, ".part.") ||
+			strings.Contains(low, ".part-") || // yt-dlp HLS/DASH .part-FragN
+			reFragmentInName.MatchString(name)
+		if !looksMedia {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil || info.Size() <= 0 {
+			continue
+		}
+		sum += info.Size()
+	}
+	return sum
 }
 
 func parseSize(num, unit string) int64 {
@@ -298,6 +384,55 @@ func parseSize(num, unit string) int64 {
 		mult = 1024 * 1024 * 1024
 	}
 	return int64(v * mult)
+}
+
+// PromoteMediaFile moves a finished download from a private work directory into
+// the user-visible destination folder. destDir must already exist.
+func PromoteMediaFile(workPath, destDir string) (string, error) {
+	workPath = filepath.Clean(workPath)
+	destDir = filepath.Clean(destDir)
+	if workPath == "" || destDir == "" {
+		return "", fmt.Errorf("promote: empty path")
+	}
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return "", err
+	}
+	base := filepath.Base(workPath)
+	dest := filepath.Join(destDir, base)
+	if absWork, err := filepath.Abs(workPath); err == nil {
+		if absDest, err := filepath.Abs(dest); err == nil && absWork == absDest {
+			return dest, nil
+		}
+	}
+	if _, err := os.Stat(dest); err == nil {
+		ext := filepath.Ext(base)
+		stem := strings.TrimSuffix(base, ext)
+		dest = filepath.Join(destDir, fmt.Sprintf("%s_%d%s", stem, time.Now().Unix(), ext))
+	}
+	if err := os.Rename(workPath, dest); err == nil {
+		return dest, nil
+	}
+	// Cross-device rename fallback.
+	in, err := os.Open(workPath)
+	if err != nil {
+		return "", err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
+		return "", err
+	}
+	if _, err := out.ReadFrom(in); err != nil {
+		_ = out.Close()
+		_ = os.Remove(dest)
+		return "", err
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(dest)
+		return "", err
+	}
+	_ = os.Remove(workPath)
+	return dest, nil
 }
 
 func sanitizeBase(name string) string {

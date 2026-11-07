@@ -78,9 +78,17 @@ export function DownloadDetail({
         <div>
           <dt className="text-[var(--color-text-muted)]">Size</dt>
           <dd className="tabular-nums">
-            {d.totalBytes != null
-              ? `${formatBytes(d.downloadedBytes)} / ${formatBytes(d.totalBytes)}`
-              : formatBytes(d.downloadedBytes)}
+            {d.status === "downloading" ||
+            d.status === "inspecting" ||
+            d.status === "finalizing"
+              ? d.totalBytes != null && d.downloadedBytes >= d.totalBytes
+                ? `${formatBytes(d.downloadedBytes)} · finishing…`
+                : d.totalBytes != null
+                  ? `${formatBytes(d.downloadedBytes)} / ${formatBytes(d.totalBytes)}`
+                  : formatBytes(d.downloadedBytes)
+              : d.totalBytes != null
+                ? `${formatBytes(d.downloadedBytes)} / ${formatBytes(d.totalBytes)}`
+                : formatBytes(d.downloadedBytes)}
           </dd>
         </div>
         {d.errorMessage ? (

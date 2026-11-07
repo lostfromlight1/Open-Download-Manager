@@ -177,6 +177,9 @@ func (m *Manager) AddMedia(ctx context.Context, opts AddMediaOptions) (task.Task
 	if err != nil {
 		return task.Task{}, fmt.Errorf("%w: %v", engine.ErrInvalidDestination, err)
 	}
+	if err := m.rejectDuplicateMedia(ctx, pageURL); err != nil {
+		return task.Task{}, err
+	}
 	name := strings.TrimSpace(opts.DisplayName)
 	if name == "" {
 		name = "youtube-video"
@@ -209,6 +212,32 @@ func (m *Manager) AddMedia(ctx context.Context, opts AddMediaOptions) (task.Task
 	m.notifyChanged(t.ID)
 	m.nudge()
 	return t, nil
+}
+
+// rejectDuplicateMedia blocks a second active/queued task for the same video.
+// Concurrent yt-dlp jobs into one folder race on shared .part-Frag files.
+func (m *Manager) rejectDuplicateMedia(ctx context.Context, pageURL string) error {
+	wantID := media.ExtractVideoID(pageURL)
+	list, err := m.store.ListTasks(ctx)
+	if err != nil {
+		return err
+	}
+	for _, existing := range list {
+		if existing.MediaSource != "youtube" {
+			continue
+		}
+		if !task.IsActive(existing.State) &&
+			existing.State != task.StateQueued &&
+			existing.State != task.StatePaused {
+			continue
+		}
+		sameURL := existing.MediaWebpageURL == pageURL || existing.URL == pageURL
+		sameID := wantID != "" && media.ExtractVideoID(existing.MediaWebpageURL) == wantID
+		if sameURL || sameID {
+			return fmt.Errorf("this YouTube video is already queued or downloading — wait for it to finish or cancel it first")
+		}
+	}
+	return nil
 }
 
 func (m *Manager) takeAuthHeaders(taskID string) http.Header {
@@ -584,11 +613,17 @@ func (m *Manager) executeMedia(ctx context.Context, t task.Task, cfg storage.Set
 	}
 	m.notifyChanged(id)
 
-	destDir := filepath.Dir(t.DestinationPath)
+	userDest := filepath.Dir(t.DestinationPath)
+	// Private work dir so parallel media tasks (or retries) never share
+	// yt-dlp fragment filenames in the user download folder.
+	workDir := filepath.Join(userDest, ".odm-partial", id)
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		return m.failTask(ctx, t, "media_dest", err.Error())
+	}
 	final, err := media.Download(ctx, media.DownloadOptions{
 		WebpageURL: t.MediaWebpageURL,
 		FormatID:   t.MediaFormatID,
-		DestDir:    destDir,
+		DestDir:    workDir,
 		OutputName: "",
 		Tools:      tools,
 		OnProgress: func(ev media.ProgressEvent) {
@@ -596,21 +631,34 @@ func (m *Manager) executeMedia(ctx context.Context, t task.Task, cfg storage.Set
 			if gerr != nil {
 				return
 			}
-			cur.DownloadedBytes = ev.Downloaded
+			// Keep bytes monotonic across yt-dlp stream switches / sparse lines.
+			if ev.Downloaded > cur.DownloadedBytes {
+				cur.DownloadedBytes = ev.Downloaded
+			}
 			if ev.Total > 0 {
 				total := ev.Total
-				cur.TotalBytes = &total
+				if cur.TotalBytes == nil || total > *cur.TotalBytes {
+					cur.TotalBytes = &total
+				}
+			} else if cur.TotalBytes != nil && cur.DownloadedBytes >= *cur.TotalBytes {
+				// Video stream exhausted; audio/merge may still be running.
+				cur.TotalBytes = nil
 			}
 			cur.UpdatedAt = time.Now().UTC()
 			_ = m.store.UpdateTask(context.Background(), cur)
+			var total int64
+			if cur.TotalBytes != nil {
+				total = *cur.TotalBytes
+			}
 			m.notifyProgress(id, engine.ProgressEvent{
-				Downloaded:  ev.Downloaded,
-				Total:       ev.Total,
+				Downloaded:  cur.DownloadedBytes,
+				Total:       total,
 				BytesPerSec: ev.BytesPerSec,
 			})
 		},
 	})
 	if err != nil {
+		_ = os.RemoveAll(workDir)
 		if errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "cancelled") {
 			cur, gerr := m.store.GetTask(context.Background(), id)
 			if gerr == nil && task.IsActive(cur.State) && cur.State != task.StateCancelled {
@@ -623,6 +671,13 @@ func (m *Manager) executeMedia(ctx context.Context, t task.Task, cfg storage.Set
 		}
 		return m.failTask(ctx, t, "media_failed", err.Error())
 	}
+
+	promoted, perr := media.PromoteMediaFile(final, userDest)
+	_ = os.RemoveAll(workDir)
+	if perr != nil {
+		return m.failTask(ctx, t, "media_promote", perr.Error())
+	}
+	final = promoted
 
 	st, _ := os.Stat(final)
 	var size int64

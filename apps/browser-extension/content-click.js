@@ -41,10 +41,20 @@
       }
       event.preventDefault();
       event.stopPropagation();
-      chrome.runtime.sendMessage({ type: "enqueue", url: href }, () => {
-        void chrome.runtime.lastError;
-      });
+      try {
+        if (!chrome.runtime?.id) return;
+        chrome.runtime.sendMessage({ type: "enqueue", url: href }, () => {
+          try {
+            void chrome.runtime.lastError;
+          } catch {
+            // Extension reloaded while this page stayed open.
+          }
+        });
+      } catch {
+        // Extension context invalidated — ignore; user should refresh the tab.
+      }
     },
     true,
   );
 })();
+

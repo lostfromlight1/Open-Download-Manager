@@ -56,6 +56,7 @@ Controls:
 - Do not invoke a shell; pass argv arrays to `exec.Command` / `CommandContext`.
 - Allowlist YouTube host patterns for probe/download; reject other sites in MVP.
 - Validate destination directory and sanitize output basename templates.
+- Run each media task in a private `.odm-partial/<taskID>/` work directory under the user destination, then promote the finished file; reject a second queued/active/paused task for the same video id so concurrent yt-dlp jobs cannot race on shared `.part-Frag` names.
 - Cancel via context cancellation (kill process); do not leave orphaned writers writing outside the destination.
 - Do not log cookies, Authorization, or signed query strings from media URLs.
 - Pin helper versions; prefer checksum verification when publishing updates.

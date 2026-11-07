@@ -55,11 +55,12 @@ Required server behaviors:
 - Phase 5: `apps/desktop` openpath planner tests cover open/reveal command args (Windows/macOS/Linux) and missing-file parent fallback without launching a GUI.
 - Phase 6: `internal/browserhost` covers NM framing, schema rejection, disabled/no-directory enqueue, and happy-path enqueue into a temp SQLite store.
 - Phase 7: `internal/storage` round-trips `ui.close_to_tray`; `apps/desktop` covers `ShouldHideOnClose` and resume-mismatch `NeedUI` (show window when a decision is required).
-- Phase 8: `apps/browser-extension` `node --test intercept.test.js` covers http(s) accept, HTML/blob skip; desktop UI remains covered by existing frontend tests.
+- Phase 8: `apps/browser-extension` `npm test` covers http(s) accept, HTML/blob skip, and YouTube button context-invalidated error classification; desktop UI remains covered by existing frontend tests.
 - Phase 9: browserhost cookie/referer validation; manager ephemeral Cookie handoff; engine ExtraHeaders allowlist; storage `ui.launch_at_login`; tray tooltip formatting.
 - Phase 10: `internal/media` probe JSON fixtures, progress line parse, YouTube URL allowlist, tools path resolution (no network); storage media columns + `media.*` settings.
 - UI polish: frontend `formatMbps` + `partitionSelection` unit tests; manual check of active-row speed graph and bulk select toolbar.
 - Live YouTube (opt-in): `ODM_LIVE_YT=1 go test ./internal/media -run LiveDownload -count=1 -timeout 30m -v` and `ODM_LIVE_YT=1 go test ./internal/manager -run LiveMediaManager -count=1 -timeout 30m -v` (needs helpers under `%APPDATA%/odm/tools`).
+- Windows media helpers must not flash a console (`hideHelperConsole` / `CREATE_NO_WINDOW`); progress uses on-disk byte estimates when yt-dlp omits totals.
 
 ## Quality gates
 
@@ -165,6 +166,7 @@ Before merging:
 8. Extension: teal **ODM** button on watch pages, or right-click → **Download YouTube with ODM (choose format)…** → desktop format picker. Intercept must not enqueue YouTube scraps; click capture must not block watching.
 9. If probe fails with “page needs to be reloaded”, Settings → **Check for helper updates** (re-downloads pinned yt-dlp) and retry.
 10. Completed media: Details → Open file / Show in folder must open the merged `.mp4` (not `.f312` fragments).
+11. Do not start two Best A+V downloads of the same watch URL at once — the second enqueue should error with “already queued or downloading”; after the first finishes, a second copy may be started.
 
 ## Reliability tests
 

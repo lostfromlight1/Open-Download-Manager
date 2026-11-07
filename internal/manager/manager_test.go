@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -174,6 +175,38 @@ func TestManagerResumeMismatchAbort(t *testing.T) {
 		time.Sleep(40 * time.Millisecond)
 	}
 	t.Fatal("expected resume_mismatch failure")
+}
+
+func TestAddMediaRejectsDuplicateActive(t *testing.T) {
+	m, _ := openManager(t, nil)
+	dest := t.TempDir()
+	const page = "https://www.youtube.com/watch?v=Hlr8vgRllxc"
+
+	first, err := m.AddMedia(context.Background(), manager.AddMediaOptions{
+		WebpageURL:  page,
+		FormatID:    "best",
+		DestDir:     dest,
+		DisplayName: "drum",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.State != task.StateQueued {
+		t.Fatalf("state=%s", first.State)
+	}
+
+	_, err = m.AddMedia(context.Background(), manager.AddMediaOptions{
+		WebpageURL:  "https://youtu.be/Hlr8vgRllxc",
+		FormatID:    "ba",
+		DestDir:     dest,
+		DisplayName: "drum-audio",
+	})
+	if err == nil {
+		t.Fatal("expected duplicate rejection")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "already") {
+		t.Fatalf("err=%v", err)
+	}
 }
 
 func TestManagerRemoveKeepLeavesFile(t *testing.T) {

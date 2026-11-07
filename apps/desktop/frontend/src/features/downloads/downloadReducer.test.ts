@@ -67,6 +67,25 @@ describe("downloadsReducer", () => {
     expect(state.byId["1"]?.totalBytes).toBe(100);
   });
 
+  it("clears exhausted total while still downloading", () => {
+    let state = downloadsReducer(initialDownloadsState, {
+      type: "snapshot",
+      downloads: [{ ...sample, downloadedBytes: 100, totalBytes: 100 }],
+    });
+    state = downloadsReducer(state, {
+      type: "progress",
+      event: {
+        taskId: "1",
+        downloadedBytes: 100,
+        totalBytes: null,
+        bytesPerSecond: 3,
+        status: "downloading",
+      },
+    });
+    expect(state.byId["1"]?.downloadedBytes).toBe(100);
+    expect(state.byId["1"]?.totalBytes).toBeNull();
+  });
+
   it("removes on changed null", () => {
     let state = downloadsReducer(initialDownloadsState, {
       type: "snapshot",
