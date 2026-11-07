@@ -74,15 +74,19 @@ jobs:
         working-directory: apps/desktop
         run: wails3 build
 
-      # Optional Authenticode (v1.0 final). Skipped when secrets are absent.
+      # Optional Authenticode. Skipped when secrets are absent (do not use
+      # secrets.* in step `if:` — Actions rejects that expression).
       - name: Sign executable (optional)
-        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
         working-directory: apps/desktop
         shell: pwsh
         env:
           WINDOWS_CERT_BASE64: ${{ secrets.WINDOWS_CERT_BASE64 }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERT_BASE64) -or [string]::IsNullOrWhiteSpace($env:WINDOWS_CERT_PASSWORD)) {
+            Write-Host "Skipping Authenticode (WINDOWS_CERT_* secrets not set)"
+            exit 0
+          }
           $pfx = Join-Path $env:RUNNER_TEMP "odm-code-sign.pfx"
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_BASE64))
           $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
