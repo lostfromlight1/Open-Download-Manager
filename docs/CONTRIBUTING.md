@@ -13,6 +13,11 @@ Search existing issues and include:
 
 Never attach private download URLs, cookies, tokens, or personal files.
 
+## Branches
+
+- `main` — stable release line (tagged releases such as `v1.0.0`).
+- `development` — post-release WIP; open PRs into `main` when ready to ship.
+
 ## Development setup
 
 Follow [`SETUP.md`](SETUP.md) on a new machine. Before opening a pull request, run:

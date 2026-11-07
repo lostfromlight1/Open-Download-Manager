@@ -85,7 +85,7 @@ Before merging:
 6. From Details: Open file / Show in folder for a completed task.
 7. Uninstall via the installer entry. Note: SQLite data under `%AppData%\odm` is **not** removed by uninstall (by design for Phase 5).
 
-### End-user install smoke (0.5.0 / v1.0 prep)
+### End-user install smoke (1.0.0)
 
 1. Install from a GitHub Release `odm-amd64-installer.exe` (or local NSIS build) without elevating.
 2. Confirm install path is under `%LOCALAPPDATA%\Programs\…`.

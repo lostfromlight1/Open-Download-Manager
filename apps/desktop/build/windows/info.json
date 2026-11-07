@@ -1,17 +1,18 @@
 {
 	"fixed": {
-		"file_version": "0.5.0",
-		"product_version": "0.5.0"
+		"file_version": "1.0.0",
+		"product_version": "1.0.0"
 	},
 	"info": {
 		"0409": {
-			"FileVersion": "0.5.0",
-			"ProductVersion": "0.5.0",
+			"FileVersion": "1.0.0",
+			"ProductVersion": "1.0.0",
 			"CompanyName": "Open Download Manager contributors",
 			"FileDescription": "Open Download Manager",
 			"LegalCopyright": "(c) 2026 Open Download Manager contributors",
 			"ProductName": "Open Download Manager",
-			"Comments": "ODM desktop v0.5 (v1.0 prep)"
+			"Comments": "ODM desktop 1.0.0"
 		}
 	}
 }
+

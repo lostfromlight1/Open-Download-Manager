@@ -2,7 +2,7 @@
 
 Install and use ODM on Windows without cloning the repo or installing Go/Node.
 
-**Current prep release:** `0.5.0` (v1.0 release candidate). Windows code signing lands with final **1.0.0**.
+**Current release:** `1.0.0`. Windows installers are **unsigned** for this cut; Authenticode signing is a follow-up.
 
 ## 1. Download the installer
 
@@ -11,7 +11,7 @@ Install and use ODM on Windows without cloning the repo or installing Go/Node.
 
 ### SmartScreen (unsigned builds)
 
-Until 1.0.0 is Authenticode-signed, Windows may show **Windows protected your PC**:
+Windows may show **Windows protected your PC** because the installer is not Authenticode-signed yet:
 
 1. Click **More info**
 2. Click **Run anyway**

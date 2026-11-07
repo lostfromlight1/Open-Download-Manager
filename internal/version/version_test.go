@@ -8,9 +8,10 @@ import "testing"
 // packaging/docs stay in sync.
 func TestStringIncludesProductAndVersion(t *testing.T) {
 	got := String()
-	if got != "ODM — Open Download Manager 0.5.0" {
+	if got != "ODM — Open Download Manager 1.0.0" {
 		// %q shows the string with quotes and escape sequences (helpful for
 		// invisible characters).
 		t.Fatalf("String() = %q", got)
 	}
 }
+

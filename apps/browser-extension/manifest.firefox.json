@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ODM — Open Download Manager",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "description": "Send download links to Open Download Manager (opt-in native messaging).",
   "permissions": ["contextMenus", "nativeMessaging", "storage", "scripting"],
   "optional_permissions": ["downloads", "cookies"],
@@ -31,3 +31,4 @@
     }
   }
 }
+

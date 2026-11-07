@@ -233,14 +233,18 @@ Keep downloads alive in the **same** desktop process when the window is hidden (
 
 ## v1.0 prep (0.5.0) — Windows easy install / setup
 
-**Status:** implemented (Windows-first; Authenticode deferred to final 1.0.0).
+**Status:** shipped as **1.0.0** (Windows-first; Authenticode still deferred).
 
 **Deliverables**
 
 - Per-user NSIS installer (no UAC), finish-page launch, signing placeholders
 - First-run setup wizard when `download.directory` is empty
 - `docs/GETTING_STARTED.md` for end users; Release workflow + SHA256
-- Version branding **0.5.0**; Authenticode deferred to final 1.0.0
+- Version branding **1.0.0**; Authenticode signing remains a follow-up
+
+## Post-1.0 development
+
+Ongoing work lands on the `development` branch first; `main` stays the stable release line.
 
 ## Phase N — Network Access / Tunneling track
 

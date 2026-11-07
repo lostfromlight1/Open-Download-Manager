@@ -131,7 +131,7 @@ go run ./cmd/odm version
 Expected CLI output:
 
 ```text
-ODM — Open Download Manager 0.5.0
+ODM — Open Download Manager 1.0.0
 ```
 
 ---
@@ -217,9 +217,9 @@ go build -o bin/odm-desktop ./apps/desktop
 
 End users who only need the app should use a Release installer — see [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
 
-### 5.5 Unsigned installers / packages (Phase 5 / 0.5.0)
+### 5.5 Unsigned installers / packages (1.0.0)
 
-All packages are **unsigned**. Code signing and macOS notarization are deferred to v1.0.
+All packages are **unsigned**. Authenticode and macOS notarization remain follow-ups after 1.0.0.
 
 From `apps/desktop` with `CI=true`:
 

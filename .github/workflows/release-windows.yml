@@ -1,6 +1,6 @@
 name: Release Windows
 
-# Cut a release: git tag v0.5.0 && git push origin v0.5.0
+# Cut a release: git tag v1.0.0 && git push origin v1.0.0
 # Or run workflow_dispatch and enter a tag name to create/update the Release.
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v0.5.0)"
+        description: "Release tag (e.g. v1.0.0)"
         required: true
         type: string
 
@@ -115,7 +115,7 @@ jobs:
           files: |
             release-assets/*
           body: |
-            ## Windows installer (0.5.0 / v1.0 prep)
+            ## Windows installer (1.0.0)
 
             - Per-user install (no admin/UAC): `%LOCALAPPDATA%\Programs\…`
             - Finish page can launch ODM
@@ -123,7 +123,7 @@ jobs:
 
             See [docs/GETTING_STARTED.md](https://github.com/lostfromlight1/Open-Download-Manager/blob/main/docs/GETTING_STARTED.md).
 
-            **SmartScreen:** builds may be unsigned until 1.0.0 — use More info → Run anyway only for official Release assets.
+            **SmartScreen:** this release is unsigned — use More info → Run anyway only for official Release assets.
 
             Verify: `SHA256SUMS.txt` next to the installer.
 

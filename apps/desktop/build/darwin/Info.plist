@@ -10,11 +10,11 @@
         <key>CFBundleIdentifier</key>
             <string>app.opendownloadmanager.desktop</string>
         <key>CFBundleVersion</key>
-            <string>0.5.0</string>
+            <string>1.0.0</string>
         <key>CFBundleGetInfoString</key>
-            <string>ODM desktop MVP (v0.5)</string>
+            <string>ODM desktop 1.0.0</string>
         <key>CFBundleShortVersionString</key>
-            <string>0.5.0</string>
+            <string>1.0.0</string>
         <key>CFBundleIconFile</key>
             <string>icons</string>
         <key>CFBundleIconName</key>
@@ -27,3 +27,4 @@
             <string>(c) 2026 Open Download Manager contributors</string>
     </dict>
 </plist>
+

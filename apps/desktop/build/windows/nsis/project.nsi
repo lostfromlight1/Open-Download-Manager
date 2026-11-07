@@ -22,7 +22,7 @@ Unicode true
 ## !define INFO_PROJECTNAME    "odm" # Default "odm"
 ## !define INFO_COMPANYNAME    "Open Download Manager contributors"
 ## !define INFO_PRODUCTNAME    "Open Download Manager"
-## !define INFO_PRODUCTVERSION "0.5.0"
+## !define INFO_PRODUCTVERSION "1.0.0"
 ## !define INFO_COPYRIGHT      "(c) 2026 Open Download Manager contributors"
 ###
 ## !define PRODUCT_EXECUTABLE  "Application.exe"      # Default "${INFO_PROJECTNAME}.exe"
@@ -129,3 +129,4 @@ Section "uninstall"
 
     !insertmacro wails.deleteUninstaller
 SectionEnd
+

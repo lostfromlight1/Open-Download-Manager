@@ -4,7 +4,7 @@
 name: "odm"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.5.0"
+version: "1.0.0"
 section: "net"
 priority: "optional"
 maintainer: "Open Download Manager contributors <noreply@opendownloadmanager.app>"
@@ -40,3 +40,4 @@ overrides:
 
 scripts:
   postinstall: "./build/linux/nfpm/scripts/postinstall.sh"
+

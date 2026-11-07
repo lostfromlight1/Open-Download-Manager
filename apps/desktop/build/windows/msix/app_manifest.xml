@@ -10,7 +10,7 @@
   <Identity 
     Name="app.opendownloadmanager.desktop"
     Publisher="CN=Open Download Manager contributors"
-    Version="0.5.0.0"
+    Version="1.0.0.0"
     ProcessorArchitecture="x64" />
   
   <Properties>
