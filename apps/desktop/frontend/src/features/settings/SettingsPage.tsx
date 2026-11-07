@@ -67,23 +67,21 @@ export function SettingsPage({ onBack, onSaved }: Props) {
     }
   }
 
-  async function retryMediaTools() {
+  async function refreshMediaTools() {
     if (!form?.mediaEnabled) return;
     setBusy(true);
     setError(null);
     setSavedMsg(null);
     try {
       const api = await getDesktopApi();
-      // Re-save kicks a background EnsureTools that resumes partial ffmpeg downloads.
-      const saved = await api.updateSettings({ ...form, mediaEnabled: true });
+      const saved = await api.ensureMediaTools();
       setForm(saved);
       onSaved(saved);
       setSavedMsg(
         saved.mediaToolsMessage ||
-          "Helper install started — keep ODM open until ffmpeg finishes (~190MB).",
+          "Helper update started — keep ODM open while yt-dlp/ffmpeg download.",
       );
-      // Poll a few times while the background download runs.
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < 20; i++) {
         await new Promise((r) => setTimeout(r, 2000));
         const latest = await api.getSettings();
         setForm(latest);
@@ -295,14 +293,18 @@ export function SettingsPage({ onBack, onSaved }: Props) {
                 {form.mediaToolsMessage}
               </p>
             ) : null}
-            {form.mediaEnabled && !form.mediaToolsReady ? (
+            {form.mediaEnabled ? (
               <button
                 type="button"
                 className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
                 disabled={busy}
-                onClick={() => void retryMediaTools()}
+                onClick={() => void refreshMediaTools()}
               >
-                {busy ? "Working…" : "Retry helper install"}
+                {busy
+                  ? "Updating helpers…"
+                  : form.mediaToolsReady
+                    ? "Check for helper updates"
+                    : "Retry helper install"}
               </button>
             ) : null}
           </fieldset>

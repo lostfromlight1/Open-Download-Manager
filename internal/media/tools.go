@@ -62,6 +62,15 @@ func (t Tools) FFmpegReady() bool {
 	return t.FFmpegPath != "" && fileExecutable(t.FFmpegPath)
 }
 
+// ForceRefreshManagedYtDlp removes the managed yt-dlp binary and version pin so
+// EnsureTools will re-download PinnedYtDlpVersion (Settings "Check for updates").
+func ForceRefreshManagedYtDlp(dataDir string) {
+	dir := ToolsDir(dataDir)
+	_ = os.Remove(filepath.Join(dir, ytDlpVersionFile))
+	_ = os.Remove(filepath.Join(dir, ytdlpBinaryName()))
+	_ = os.Remove(filepath.Join(dir, ytdlpBinaryName()+".part"))
+}
+
 // NeedsEnsure reports whether managed helpers should be (re)installed:
 // missing binaries, or managed yt-dlp not at PinnedYtDlpVersion.
 func NeedsEnsure(dataDir, ytdlpOverride, ffmpegOverride string) bool {

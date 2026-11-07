@@ -45,6 +45,29 @@ func ValidateYouTubeURL(raw string) (string, error) {
 	return u.String(), nil
 }
 
+// ExtractVideoID returns the YouTube video id from a watch/shorts/youtu.be URL.
+func ExtractVideoID(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return ""
+	}
+	host := strings.ToLower(u.Hostname())
+	path := strings.Trim(u.Path, "/")
+	parts := strings.Split(path, "/")
+	if host == "youtu.be" && len(parts) > 0 {
+		return strings.TrimSpace(parts[0])
+	}
+	if q := u.Query().Get("v"); q != "" {
+		return strings.TrimSpace(q)
+	}
+	for i, p := range parts {
+		if (p == "shorts" || p == "embed" || p == "live" || p == "v") && i+1 < len(parts) {
+			return strings.TrimSpace(parts[i+1])
+		}
+	}
+	return ""
+}
+
 // LooksLikePlaylist reports playlist/channel-style URLs (vs a single watch video).
 func LooksLikePlaylist(raw string) bool {
 	u, err := url.Parse(strings.TrimSpace(raw))

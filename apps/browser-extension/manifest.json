@@ -9,6 +9,17 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.youtube.com/*",
+        "*://youtube.com/*",
+        "*://m.youtube.com/*"
+      ],
+      "js": ["youtube-button.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_title": "ODM",
     "default_popup": "popup.html"

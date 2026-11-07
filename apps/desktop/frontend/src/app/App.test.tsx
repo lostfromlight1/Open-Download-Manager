@@ -56,6 +56,26 @@ function mockApi(partial: Partial<DesktopApi> = {}): DesktopApi {
     addMediaDownload: async () => {
       throw new Error("not used");
     },
+    ensureMediaTools: async () => ({
+      downloadDirectory: "C:/Downloads",
+      maxActiveDownloads: 2,
+      maxConnectionsPerDownload: 4,
+      proxyMode: "system",
+      proxyURL: "",
+      theme: "system",
+      notifyOnComplete: false,
+      browserIntegrationEnabled: false,
+      chromeExtensionId: "",
+      browserHostRegistered: false,
+      browserHostMessage: "",
+      closeToTray: true,
+      launchAtLogin: false,
+      mediaEnabled: true,
+      mediaYtdlpPath: "",
+      mediaFfmpegPath: "",
+      mediaToolsReady: false,
+      mediaToolsMessage: "Re-downloading…",
+    }),
     ...partial,
   };
 }

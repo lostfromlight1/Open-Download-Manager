@@ -151,8 +151,9 @@ Before merging:
 5. Disable YouTube downloads → Save → Add a YouTube URL → clear error pointing at Settings.
 6. Ordinary http(s) download still works with media enabled or disabled.
 7. CLI: `odm settings show` lists `media.enabled`; `odm settings set media.enabled true` persists (helpers install from desktop Settings Save).
-8. Extension: right-click a YouTube link → **Download YouTube with ODM (choose format)…** → desktop opens format picker (media enabled + host registered). Intercept must not enqueue `youtube.com/watch` page scraps. Click capture must not block watching videos on youtube.com.
-9. If probe fails with “page needs to be reloaded”, Settings → **Retry helper install** (upgrades pinned yt-dlp) and retry the pick.
+8. Extension: teal **ODM** button on watch pages, or right-click → **Download YouTube with ODM (choose format)…** → desktop format picker. Intercept must not enqueue YouTube scraps; click capture must not block watching.
+9. If probe fails with “page needs to be reloaded”, Settings → **Check for helper updates** (re-downloads pinned yt-dlp) and retry.
+10. Completed media: Details → Open file / Show in folder must open the merged `.mp4` (not `.f312` fragments).
 
 ## Reliability tests
 

@@ -79,6 +79,7 @@ func Download(ctx context.Context, opts DownloadOptions) (finalPath string, err 
 	}
 
 	format := ResolveFormatSelector(opts.FormatID)
+	videoID := ExtractVideoID(pageURL)
 	outTmpl := filepath.Join(opts.DestDir, "%(title).80B [%(id)s].%(ext)s")
 	if strings.TrimSpace(opts.OutputName) != "" {
 		safe := sanitizeBase(opts.OutputName)
@@ -103,7 +104,7 @@ func Download(ctx context.Context, opts DownloadOptions) (finalPath string, err 
 	for _, clientArgs := range youtubeExtractorArgSets() {
 		runArgs := append(append([]string{}, base...), clientArgs...)
 		runArgs = append(runArgs, pageURL)
-		path, err := runYtDlpDownload(ctx, opts, runArgs)
+		path, err := runYtDlpDownload(ctx, opts, runArgs, videoID)
 		if err == nil {
 			return path, nil
 		}
@@ -122,7 +123,7 @@ func Download(ctx context.Context, opts DownloadOptions) (finalPath string, err 
 	return "", fmt.Errorf("yt-dlp download failed")
 }
 
-func runYtDlpDownload(ctx context.Context, opts DownloadOptions, runArgs []string) (string, error) {
+func runYtDlpDownload(ctx context.Context, opts DownloadOptions, runArgs []string, videoID string) (string, error) {
 	cmd := exec.CommandContext(ctx, opts.Tools.YtDlpPath, runArgs...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -168,23 +169,61 @@ func runYtDlpDownload(ctx context.Context, opts DownloadOptions, runArgs []strin
 		if detail == "" {
 			detail = waitErr.Error()
 		}
-		cleanupIntermediateMedia(opts.DestDir, "")
-		return "", fmt.Errorf("yt-dlp download failed: %s", detail)
+		if videoID != "" {
+			cleanupIntermediateMedia(opts.DestDir, videoID)
+		}
+		return "", fmt.Errorf("%s", FormatUserMediaError(detail))
 	}
 
-	finalPath := findFinalMediaFile(opts.DestDir)
+	finalPath := findFinalMediaFile(opts.DestDir, videoID)
 	if finalPath == "" {
-		cleanupIntermediateMedia(opts.DestDir, "")
+		if videoID != "" {
+			cleanupIntermediateMedia(opts.DestDir, videoID)
+		}
 		detail := strings.Join(errLines, " | ")
 		if detail == "" {
 			detail = "video/audio fragments were downloaded but not merged into one file (is ffmpeg ready?)"
 		}
-		return "", fmt.Errorf("yt-dlp merge incomplete: %s", detail)
+		return "", fmt.Errorf("%s", FormatUserMediaError(detail))
 	}
-	if id := videoIDFromFilename(filepath.Base(finalPath)); id != "" {
+	if videoID != "" {
+		cleanupIntermediateMedia(opts.DestDir, videoID)
+	} else if id := videoIDFromFilename(filepath.Base(finalPath)); id != "" {
 		cleanupIntermediateMedia(opts.DestDir, id)
 	}
 	return finalPath, nil
+}
+
+// FormatUserMediaError shortens yt-dlp noise into an actionable UI message.
+func FormatUserMediaError(raw string) string {
+	msg := strings.TrimSpace(raw)
+	if msg == "" {
+		return "YouTube download failed"
+	}
+	low := strings.ToLower(msg)
+	switch {
+	case strings.Contains(low, "page needs to be reloaded"):
+		return "YouTube blocked this helper build — open Settings → Check for helper updates"
+	case strings.Contains(low, "ffmpeg") && (strings.Contains(low, "not found") || strings.Contains(low, "merge")):
+		return "ffmpeg merge failed — open Settings → Check for helper updates, then retry"
+	case strings.Contains(low, "merge incomplete") || strings.Contains(low, "fragments"):
+		return "Download finished as separate video/audio pieces but merge failed — ensure ffmpeg is ready and retry"
+	case strings.Contains(low, "private video"), strings.Contains(low, "login required"):
+		return "This video requires sign-in or is private (not supported yet)"
+	case strings.Contains(low, "unavailable"), strings.Contains(low, "has been removed"):
+		return "Video is unavailable"
+	}
+	// Keep last segment if pipe-joined logs are long.
+	if parts := strings.Split(msg, " | "); len(parts) > 1 {
+		msg = strings.TrimSpace(parts[len(parts)-1])
+	}
+	if len(msg) > 240 {
+		msg = msg[:237] + "..."
+	}
+	if !strings.HasPrefix(strings.ToLower(msg), "yt-dlp") && !strings.HasPrefix(strings.ToLower(msg), "youtube") {
+		return "YouTube download failed: " + msg
+	}
+	return msg
 }
 
 // ParseProgressLine extracts progress from a yt-dlp --newline download line.
@@ -267,7 +306,7 @@ func isPlayableMediaExt(name string) bool {
 	return false
 }
 
-func findFinalMediaFile(dir string) string {
+func findFinalMediaFile(dir, videoID string) string {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return ""
@@ -280,6 +319,9 @@ func findFinalMediaFile(dir string) string {
 		}
 		name := e.Name()
 		if isIntermediateMediaName(name) || !isPlayableMediaExt(name) {
+			continue
+		}
+		if videoID != "" && !strings.Contains(name, videoID) {
 			continue
 		}
 		info, err := e.Info()

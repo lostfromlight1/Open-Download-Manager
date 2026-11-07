@@ -33,6 +33,7 @@ export interface DesktopApi {
     destDir: string;
     playlistId: string;
   }): Promise<DownloadDTO>;
+  ensureMediaTools(): Promise<SettingsDTO>;
 }
 
 let api: DesktopApi | null = null;
@@ -77,6 +78,7 @@ async function loadBindings(): Promise<DesktopApi> {
       };
     },
     addMediaDownload: (req) => downloads.AddMediaDownload(req),
+    ensureMediaTools: () => downloads.EnsureMediaTools(),
   };
 }
 

@@ -336,7 +336,8 @@ func (s *DownloadService) startMediaToolsEnsure() {
 	}()
 }
 
-// EnsureMediaTools starts (or reports) managed yt-dlp/ffmpeg install.
+// EnsureMediaTools re-downloads pinned yt-dlp (and missing ffmpeg) then returns status.
+// Used by Settings “Check for helper updates” / Retry.
 func (s *DownloadService) EnsureMediaTools() (SettingsDTO, error) {
 	if err := s.requireReady(); err != nil {
 		return SettingsDTO{}, err
@@ -348,10 +349,12 @@ func (s *DownloadService) EnsureMediaTools() (SettingsDTO, error) {
 	if !cfg.MediaEnabled {
 		return SettingsDTO{}, fmt.Errorf("enable YouTube downloads first")
 	}
+	media.ForceRefreshManagedYtDlp(s.dataDir)
 	s.startMediaToolsEnsure()
 	dto := settingsToDTO(cfg)
 	s.fillMediaToolsStatus(&dto, cfg)
 	dto.BrowserHostRegistered = browserhost.IsInstalled()
+	dto.MediaToolsMessage = "Re-downloading yt-dlp " + media.PinnedYtDlpVersion + "…"
 	return dto, nil
 }
 
@@ -539,6 +542,9 @@ func (s *DownloadService) OpenDownload(id string) error {
 	}
 	if t.State != task.StateCompleted {
 		return fmt.Errorf("open is only available for completed downloads")
+	}
+	if _, err := os.Stat(t.DestinationPath); err != nil {
+		return fmt.Errorf("file not found at destination — it may have been moved, or the merge left unusable fragments; try Show in folder or re-download")
 	}
 	return openFile(t.DestinationPath)
 }

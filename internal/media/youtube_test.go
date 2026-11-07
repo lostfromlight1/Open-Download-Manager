@@ -2,6 +2,22 @@ package media
 
 import "testing"
 
+func TestExtractVideoID(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{
+		"https://www.youtube.com/watch?v=dQw4w9WgXcQ": "dQw4w9WgXcQ",
+		"https://youtu.be/dQw4w9WgXcQ":                "dQw4w9WgXcQ",
+		"https://www.youtube.com/shorts/abc123DEF00":  "abc123DEF00",
+		"https://www.youtube.com/embed/abc123DEF00":   "abc123DEF00",
+		"https://example.com/a.mp4":                   "",
+	}
+	for in, want := range cases {
+		if got := ExtractVideoID(in); got != want {
+			t.Fatalf("%q: got %q want %q", in, got, want)
+		}
+	}
+}
+
 func TestIsYouTubeURL(t *testing.T) {
 	t.Parallel()
 	ok := []string{

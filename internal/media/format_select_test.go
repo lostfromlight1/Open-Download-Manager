@@ -37,11 +37,15 @@ func TestFindFinalMediaSkipsFragments(t *testing.T) {
 	mustWrite("video [abc123].f312.mp4", 1000)
 	mustWrite("video [abc123].f251.webm", 200)
 	mustWrite("video [abc123].temp", 900)
+	mustWrite("other [zzzzzz].mp4", 9999) // newer/unrelated — must not win
 	mustWrite("video [abc123].mp4", 800)
 
-	got := findFinalMediaFile(dir)
+	got := findFinalMediaFile(dir, "abc123")
 	if filepath.Base(got) != "video [abc123].mp4" {
 		t.Fatalf("got %q", got)
+	}
+	if got := findFinalMediaFile(dir, "nope"); got != "" {
+		t.Fatalf("expected empty for unknown id, got %q", got)
 	}
 
 	cleanupIntermediateMedia(dir, "abc123")
