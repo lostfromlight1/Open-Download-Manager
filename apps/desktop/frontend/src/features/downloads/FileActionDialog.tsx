@@ -3,7 +3,9 @@ import { Dialog } from "../../components/Dialog";
 
 type Props = {
   mode: "cancel" | "remove";
+  /** Single file name, or summary when count > 1 */
   fileName: string;
+  count?: number;
   busy: boolean;
   onBack: () => void;
   onConfirm: (action: "keep" | "delete") => Promise<void>;
@@ -12,6 +14,7 @@ type Props = {
 export function FileActionDialog({
   mode,
   fileName,
+  count = 1,
   busy,
   onBack,
   onConfirm,
@@ -19,7 +22,14 @@ export function FileActionDialog({
   const [action, setAction] = useState<"keep" | "delete">("keep");
   const [error, setError] = useState<string | null>(null);
 
-  const title = mode === "cancel" ? "Cancel Download?" : "Remove Download?";
+  const bulk = count > 1;
+  const title = bulk
+    ? mode === "cancel"
+      ? `Cancel ${count} Downloads?`
+      : `Remove ${count} Downloads?`
+    : mode === "cancel"
+      ? "Cancel Download?"
+      : "Remove Download?";
   const confirmLabel = mode === "cancel" ? "Confirm Cancel" : "Remove";
 
   return (
@@ -55,8 +65,12 @@ export function FileActionDialog({
       <p className="text-[var(--color-text-muted)]">{fileName}</p>
       <p className="mt-2">
         {mode === "cancel"
-          ? "What should ODM do with the partial file?"
-          : "How should ODM handle the associated file?"}
+          ? bulk
+            ? "What should ODM do with the partial files?"
+            : "What should ODM do with the partial file?"
+          : bulk
+            ? "How should ODM handle the associated files?"
+            : "How should ODM handle the associated file?"}
       </p>
       <fieldset className="mt-3 space-y-2">
         <legend className="sr-only">File action</legend>
@@ -69,8 +83,12 @@ export function FileActionDialog({
           />
           <span>
             {mode === "cancel"
-              ? "Keep partial file"
-              : "Remove task only (keep file)"}
+              ? bulk
+                ? "Keep partial files"
+                : "Keep partial file"
+              : bulk
+                ? "Remove tasks only (keep files)"
+                : "Remove task only (keep file)"}
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
@@ -82,8 +100,12 @@ export function FileActionDialog({
           />
           <span>
             {mode === "cancel"
-              ? "Delete partial file"
-              : "Remove task and delete associated file"}
+              ? bulk
+                ? "Delete partial files"
+                : "Delete partial file"
+              : bulk
+                ? "Remove tasks and delete associated files"
+                : "Remove task and delete associated file"}
           </span>
         </label>
       </fieldset>

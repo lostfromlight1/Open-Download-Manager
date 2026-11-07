@@ -24,12 +24,21 @@ import { MediaPlaylistDialog } from "./MediaPlaylistDialog";
 import { ResumeMismatchDialog } from "./ResumeMismatchDialog";
 import type { DownloadDTO, FilterTab, MediaProbeDTO } from "./downloadTypes";
 import { isActiveStatus } from "./downloadTypes";
+import { partitionSelection } from "./selectionHelpers";
+import { useSpeedHistory } from "./useSpeedHistory";
 
 type Props = {
   defaultDir: string;
   notifyOnComplete: boolean;
   onOpenSettings: () => void;
 };
+
+type FileDialogState =
+  | {
+      mode: "cancel" | "remove";
+      downloads: DownloadDTO[];
+    }
+  | null;
 
 export function DownloadsPage({
   defaultDir,
@@ -40,17 +49,16 @@ export function DownloadsPage({
   const [filter, setFilter] = useState<FilterTab>("all");
   const [showAdd, setShowAdd] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [fileDialog, setFileDialog] = useState<{
-    mode: "cancel" | "remove";
-    download: DownloadDTO;
-  } | null>(null);
+  const [fileDialog, setFileDialog] = useState<FileDialogState>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
   const [mediaProbe, setMediaProbe] = useState<MediaProbeDTO | null>(null);
   const [mediaDest, setMediaDest] = useState(defaultDir);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const notifyRef = useRef(notifyOnComplete);
   const prevStatus = useRef<Record<string, string>>({});
+  const { samplesById, recordProgress, clearTask } = useSpeedHistory();
 
   useEffect(() => {
     notifyRef.current = notifyOnComplete;
@@ -73,9 +81,15 @@ export function DownloadsPage({
     dispatch({ type: "loading" });
     void refresh();
 
-    const offProgress = subscribeProgress((event) =>
-      dispatch({ type: "progress", event }),
-    );
+    const offProgress = subscribeProgress((event) => {
+      recordProgress(
+        event.taskId,
+        event.downloadedBytes,
+        event.bytesPerSecond,
+        event.status,
+      );
+      dispatch({ type: "progress", event });
+    });
     const offChanged = subscribeChanged((event) => {
       const prev = prevStatus.current[event.taskId];
       const next = event.download?.status;
@@ -89,8 +103,18 @@ export function DownloadsPage({
       }
       if (event.download) {
         prevStatus.current[event.taskId] = event.download.status;
+        if (!isActiveStatus(event.download.status)) {
+          clearTask(event.taskId);
+        }
       } else {
         delete prevStatus.current[event.taskId];
+        clearTask(event.taskId);
+        setSelectedIds((prevSet) => {
+          if (!prevSet.has(event.taskId)) return prevSet;
+          const nextSet = new Set(prevSet);
+          nextSet.delete(event.taskId);
+          return nextSet;
+        });
       }
       dispatch({ type: "changed", event });
     });
@@ -121,7 +145,7 @@ export function DownloadsPage({
       offDecision();
       offMediaPick();
     };
-  }, [refresh, defaultDir]);
+  }, [refresh, defaultDir, recordProgress, clearTask]);
 
   useEffect(() => {
     for (const d of Object.values(state.byId)) {
@@ -178,10 +202,66 @@ export function DownloadsPage({
     }
   }, [downloads, filter]);
 
+  const selectedRows = useMemo(
+    () => filtered.filter((d) => selectedIds.has(d.id)),
+    [filtered, selectedIds],
+  );
+
+  const selectionActions = useMemo(
+    () => partitionSelection(selectedRows),
+    [selectedRows],
+  );
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((d) => selectedIds.has(d.id));
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllFiltered() {
+    setSelectedIds((prev) => {
+      if (allFilteredSelected) {
+        const next = new Set(prev);
+        for (const d of filtered) next.delete(d.id);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const d of filtered) next.add(d.id);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
   async function runCommand(id: string, fn: () => Promise<void>) {
     setBusyId(id);
     try {
       await fn();
+      await refresh();
+    } catch (e) {
+      dispatch({
+        type: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function runBulk(fn: (rows: DownloadDTO[]) => Promise<void>) {
+    if (selectedRows.length === 0) return;
+    setBusyId("bulk");
+    try {
+      await fn(selectedRows);
+      clearSelection();
       await refresh();
     } catch (e) {
       dispatch({
@@ -272,6 +352,105 @@ export function DownloadsPage({
         ))}
       </div>
 
+      {filtered.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[var(--color-accent)]"
+              checked={allFilteredSelected}
+              onChange={toggleSelectAllFiltered}
+              aria-label="Select all visible downloads"
+            />
+            Select all
+          </label>
+          {selectedRows.length > 0 ? (
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="toolbar"
+              aria-label="Bulk actions"
+            >
+              <span className="text-sm tabular-nums text-[var(--color-text)]">
+                {selectedRows.length} selected
+              </span>
+              {selectionActions.pauseable.length > 0 ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs disabled:opacity-50"
+                  disabled={busyId === "bulk"}
+                  onClick={() =>
+                    void runBulk(async (rows) => {
+                      const api = await getDesktopApi();
+                      for (const d of rows) {
+                        if (partitionSelection([d]).pauseable.length > 0) {
+                          await api.pauseDownload(d.id);
+                        }
+                      }
+                    })
+                  }
+                >
+                  Pause ({selectionActions.pauseable.length})
+                </button>
+              ) : null}
+              {selectionActions.resumeable.length > 0 ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs disabled:opacity-50"
+                  disabled={busyId === "bulk"}
+                  onClick={() =>
+                    void runBulk(async (rows) => {
+                      const api = await getDesktopApi();
+                      for (const d of rows) {
+                        if (partitionSelection([d]).resumeable.length > 0) {
+                          await api.resumeDownload(d.id);
+                        }
+                      }
+                    })
+                  }
+                >
+                  Resume ({selectionActions.resumeable.length})
+                </button>
+              ) : null}
+              {selectionActions.cancelable.length > 0 ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs disabled:opacity-50"
+                  disabled={busyId === "bulk"}
+                  onClick={() =>
+                    setFileDialog({
+                      mode: "cancel",
+                      downloads: selectionActions.cancelable,
+                    })
+                  }
+                >
+                  Cancel ({selectionActions.cancelable.length})
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs disabled:opacity-50"
+                disabled={busyId === "bulk"}
+                onClick={() =>
+                  setFileDialog({
+                    mode: "remove",
+                    downloads: selectedRows,
+                  })
+                }
+              >
+                Remove ({selectedRows.length})
+              </button>
+              <button
+                type="button"
+                className="rounded-md px-2.5 py-1 text-xs text-[var(--color-text-muted)] underline-offset-2 hover:underline"
+                onClick={clearSelection}
+              >
+                Clear
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {state.status === "loading" ? (
         <p className="text-sm text-[var(--color-text-muted)]">
           Loading downloads…
@@ -313,6 +492,9 @@ export function DownloadsPage({
             key={d.id}
             download={d}
             busyId={busyId}
+            selected={selectedIds.has(d.id)}
+            onToggleSelect={toggleSelect}
+            speedSamples={samplesById[d.id] ?? []}
             onDetails={(id) => setDetailId(id)}
             onPause={(id) =>
               void runCommand(id, async () => {
@@ -328,11 +510,11 @@ export function DownloadsPage({
             }
             onCancel={(id) => {
               const row = state.byId[id];
-              if (row) setFileDialog({ mode: "cancel", download: row });
+              if (row) setFileDialog({ mode: "cancel", downloads: [row] });
             }}
             onRemove={(id) => {
               const row = state.byId[id];
-              if (row) setFileDialog({ mode: "remove", download: row });
+              if (row) setFileDialog({ mode: "remove", downloads: [row] });
             }}
           />
         ))}
@@ -420,20 +602,28 @@ export function DownloadsPage({
       {fileDialog ? (
         <FileActionDialog
           mode={fileDialog.mode}
-          fileName={fileDialog.download.fileName}
-          busy={busyId === fileDialog.download.id}
+          fileName={
+            fileDialog.downloads.length === 1
+              ? fileDialog.downloads[0]!.fileName
+              : `${fileDialog.downloads.length} downloads`
+          }
+          count={fileDialog.downloads.length}
+          busy={busyId === "bulk" || busyId === fileDialog.downloads[0]?.id}
           onBack={() => setFileDialog(null)}
           onConfirm={async (action) => {
-            const id = fileDialog.download.id;
-            setBusyId(id);
+            const rows = fileDialog.downloads;
+            setBusyId(rows.length > 1 ? "bulk" : rows[0]!.id);
             try {
               const api = await getDesktopApi();
-              if (fileDialog.mode === "cancel") {
-                await api.cancelDownload(id, action);
-              } else {
-                await api.removeDownload(id, action);
+              for (const d of rows) {
+                if (fileDialog.mode === "cancel") {
+                  await api.cancelDownload(d.id, action);
+                } else {
+                  await api.removeDownload(d.id, action);
+                }
               }
               setFileDialog(null);
+              clearSelection();
               await refresh();
             } finally {
               setBusyId(null);

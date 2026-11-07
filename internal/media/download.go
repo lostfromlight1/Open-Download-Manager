@@ -138,11 +138,12 @@ func runYtDlpDownload(ctx context.Context, opts DownloadOptions, runArgs []strin
 	sc := bufio.NewScanner(stdout)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var errLines []string
+	var acc progressAccumulator
 	for sc.Scan() {
 		line := sc.Text()
 		if ev, ok := ParseProgressLine(line); ok {
 			if opts.OnProgress != nil {
-				opts.OnProgress(ev)
+				opts.OnProgress(acc.Accept(ev))
 			}
 			continue
 		}
@@ -224,6 +225,43 @@ func FormatUserMediaError(raw string) string {
 		return "YouTube download failed: " + msg
 	}
 	return msg
+}
+
+// progressAccumulator keeps UI progress monotonic across yt-dlp's multi-stream
+// downloads (video then audio). Without this, Downloaded/Total reset when the
+// second stream starts and the dashboard appears to jump backwards.
+type progressAccumulator struct {
+	completed int64
+	lastDown  int64
+	lastTotal int64
+}
+
+// Accept folds a raw yt-dlp progress sample into cumulative bytes.
+func (a *progressAccumulator) Accept(ev ProgressEvent) ProgressEvent {
+	const dropThreshold int64 = 256 * 1024 // treat large drop as a new stream
+	if a.lastDown > 0 && ev.Downloaded+dropThreshold < a.lastDown {
+		// Prefer the previous stream's reported total when available; otherwise
+		// keep the high-water downloaded mark so progress never shrinks.
+		add := a.lastTotal
+		if add <= 0 || add < a.lastDown {
+			add = a.lastDown
+		}
+		a.completed += add
+	}
+	a.lastDown = ev.Downloaded
+	if ev.Total > 0 {
+		a.lastTotal = ev.Total
+	}
+	out := ProgressEvent{
+		Downloaded:  a.completed + ev.Downloaded,
+		BytesPerSec: ev.BytesPerSec,
+	}
+	if ev.Total > 0 {
+		out.Total = a.completed + ev.Total
+	} else if a.completed > 0 {
+		out.Total = a.completed + a.lastTotal
+	}
+	return out
 }
 
 // ParseProgressLine extracts progress from a yt-dlp --newline download line.

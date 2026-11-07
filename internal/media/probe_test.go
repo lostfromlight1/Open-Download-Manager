@@ -62,3 +62,34 @@ func TestParseProgressLine(t *testing.T) {
 		t.Fatalf("%+v", ev)
 	}
 }
+
+func TestProgressAccumulatorAcrossStreams(t *testing.T) {
+	t.Parallel()
+	var acc progressAccumulator
+
+	mid := acc.Accept(ProgressEvent{Downloaded: 350_000_000, Total: 700_000_000, BytesPerSec: 5e6})
+	if mid.Downloaded != 350_000_000 || mid.Total != 700_000_000 {
+		t.Fatalf("mid video %+v", mid)
+	}
+	endVideo := acc.Accept(ProgressEvent{Downloaded: 700_000_000, Total: 700_000_000, BytesPerSec: 4e6})
+	if endVideo.Downloaded != 700_000_000 {
+		t.Fatalf("end video %+v", endVideo)
+	}
+
+	// Audio stream starts — raw counters reset (as observed on Big Buck Bunny).
+	audio := acc.Accept(ProgressEvent{Downloaded: 4_000_000, Total: 10_000_000, BytesPerSec: 2e6})
+	if audio.Downloaded < 700_000_000 {
+		t.Fatalf("downloaded must stay monotonic after stream switch: %+v", audio)
+	}
+	if audio.Downloaded != 704_000_000 {
+		t.Fatalf("want 704_000_000 got %+v", audio)
+	}
+	if audio.Total != 710_000_000 {
+		t.Fatalf("want cumulative total 710_000_000 got %+v", audio)
+	}
+
+	done := acc.Accept(ProgressEvent{Downloaded: 10_000_000, Total: 10_000_000, BytesPerSec: 1e6})
+	if done.Downloaded != 710_000_000 || done.Total != 710_000_000 {
+		t.Fatalf("audio complete %+v", done)
+	}
+}

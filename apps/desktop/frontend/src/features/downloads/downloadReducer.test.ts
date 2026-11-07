@@ -37,6 +37,36 @@ describe("downloadsReducer", () => {
     expect(state.byId["1"]?.bytesPerSecond).toBe(5);
   });
 
+  it("keeps progress monotonic across stream resets", () => {
+    let state = downloadsReducer(initialDownloadsState, {
+      type: "snapshot",
+      downloads: [sample],
+    });
+    state = downloadsReducer(state, {
+      type: "progress",
+      event: {
+        taskId: "1",
+        downloadedBytes: 90,
+        totalBytes: 100,
+        bytesPerSecond: 8,
+        status: "downloading",
+      },
+    });
+    // Second stream starts at a lower counter (yt-dlp video→audio).
+    state = downloadsReducer(state, {
+      type: "progress",
+      event: {
+        taskId: "1",
+        downloadedBytes: 4,
+        totalBytes: null,
+        bytesPerSecond: 2,
+        status: "downloading",
+      },
+    });
+    expect(state.byId["1"]?.downloadedBytes).toBe(90);
+    expect(state.byId["1"]?.totalBytes).toBe(100);
+  });
+
   it("removes on changed null", () => {
     let state = downloadsReducer(initialDownloadsState, {
       type: "snapshot",

@@ -20,6 +20,14 @@ export function formatSpeed(bps: number | null | undefined): string {
   return `${formatBytes(bps)}/s`;
 }
 
+/** Format bytes/sec as megabits (Steam-style network readout). */
+export function formatMbps(bps: number | null | undefined): string {
+  if (bps == null || !(bps > 0)) return "—";
+  const mbps = (bps * 8) / 1_000_000;
+  if (mbps < 0.1) return `${((bps * 8) / 1000).toFixed(0)} Kbps`;
+  return `${mbps.toFixed(mbps >= 10 ? 1 : 2)} Mbps`;
+}
+
 /**
  * ETA from remaining bytes and speed. Returns null when it cannot be known
  * honestly (unknown total or non-positive speed).

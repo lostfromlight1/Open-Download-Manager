@@ -7,39 +7,62 @@
   </head>
   <body>
     <main>
-      <h1>Open Download Manager</h1>
-      <p id="status" class="muted">Checking host…</p>
-      <label class="row">
-        <input type="checkbox" id="interceptDownloads" />
-        Send browser downloads to ODM
-      </label>
-      <label class="row">
-        <input type="checkbox" id="forwardCookies" />
-        Forward session cookies for intercepted downloads
-      </label>
-      <label class="row">
-        <input type="checkbox" id="captureClicks" />
-        Capture http(s) link clicks (optional)
-      </label>
-      <p class="hint">
-        Click capture never runs on YouTube pages (so videos stay clickable). Use
-        the context menu to download YouTube with format choice.
-      </p>
-      <p class="hint">
-        Enable browser integration in the ODM desktop Settings and set a
-        download folder first. Cookie handoff is one-shot and not stored by
-        ODM; after a restart you may need to intercept again. Chrome/Edge need
-        your extension ID pasted in Settings.
-      </p>
-      <p class="hint">
-        YouTube: use the teal <strong>ODM</strong> button on the watch page, or
-        right-click →
-        <strong>Download YouTube with ODM (choose format)…</strong>
-        (enable YouTube downloads in ODM Settings). Intercept does not steal
-        YouTube page clicks.
-      </p>
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true">ODM</div>
+        <div>
+          <h1>Open Download Manager</h1>
+          <p id="status" class="status" data-state="checking">Checking host…</p>
+        </div>
+      </header>
+
+      <section class="card" aria-labelledby="opts-heading">
+        <h2 id="opts-heading" class="section-title">Options</h2>
+        <label class="row">
+          <input type="checkbox" id="interceptDownloads" />
+          <span>
+            <strong>Send browser downloads to ODM</strong>
+            <span class="row-hint">Intercepts file downloads; needs Downloads permission</span>
+          </span>
+        </label>
+        <label class="row">
+          <input type="checkbox" id="forwardCookies" />
+          <span>
+            <strong>Forward session cookies</strong>
+            <span class="row-hint">One-shot Cookie + Referer for intercepted URLs</span>
+          </span>
+        </label>
+        <label class="row">
+          <input type="checkbox" id="captureClicks" />
+          <span>
+            <strong>Capture link clicks</strong>
+            <span class="row-hint">Optional; never on YouTube pages</span>
+          </span>
+        </label>
+      </section>
+
+      <section class="card tips" aria-labelledby="tips-heading">
+        <h2 id="tips-heading" class="section-title">Tips</h2>
+        <ul>
+          <li>
+            Enable browser integration in ODM Settings and set a download folder.
+            Chrome/Edge: paste this extension ID there.
+          </li>
+          <li>
+            YouTube: use the teal <strong>ODM</strong> button on the watch page,
+            or right-click → <strong>Download YouTube with ODM</strong>.
+          </li>
+          <li>
+            Cookie handoff is not stored; after a restart you may need to
+            intercept again.
+          </li>
+        </ul>
+      </section>
+
       <p id="lastError" class="error" hidden></p>
-      <button type="button" id="refresh">Refresh status</button>
+
+      <div class="actions">
+        <button type="button" id="refresh" class="primary">Refresh status</button>
+      </div>
     </main>
     <script src="popup.js"></script>
   </body>

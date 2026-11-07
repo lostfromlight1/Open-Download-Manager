@@ -43,12 +43,14 @@ Feature labels:
 - Launch at login (opt-in): OS autostart via Wails; starts hidden to the tray (`--hidden`).
 - Tray: live aggregate speed tooltip; Pause all active / Resume paused.
 - Desktop window layout usable from ~800px wide to wide screens (no phone layout).
+- Per-task Steam-style speed graph while active: network Mbps + estimated disk write.
+- Multi-select tasks with bulk pause / resume / cancel / remove.
 
 ### Later
 - Search and filters.
 - Download categories and tags.
 - Per-download settings.
-- Speed graph and history.
+- Long-term speed history charts.
 - Per-task tray actions.
 - Global hotkey.
 - Automatic clipboard URL detection (opt-in).
@@ -61,8 +63,9 @@ Feature labels:
 - Context-menu action to send a link to the desktop app.
 - Optional capture of a direct link from a user click.
 - Native Messaging connection to the desktop host.
-- Connection status and troubleshooting screen.
+- Connection status and troubleshooting screen (status color + grouped options).
 - Explicit permission disclosure.
+- YouTube watch-page **↓ ODM** button with send/error feedback.
 
 ### Download interception (opt-in)
 - Extension popup: **Send browser downloads to ODM** (off by default; requests `downloads` permission).

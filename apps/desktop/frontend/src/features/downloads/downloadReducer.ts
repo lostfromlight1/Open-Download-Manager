@@ -57,14 +57,24 @@ export function downloadsReducer(
     case "progress": {
       const cur = state.byId[action.event.taskId];
       if (!cur) return state;
+      // Keep the last known total when a progress tick omits it (e.g. between
+      // yt-dlp streams). Never let downloadedBytes move backwards in the UI.
+      const nextTotal =
+        action.event.totalBytes != null && action.event.totalBytes > 0
+          ? action.event.totalBytes
+          : cur.totalBytes;
+      const nextDownloaded = Math.max(
+        cur.downloadedBytes,
+        action.event.downloadedBytes,
+      );
       return {
         ...state,
         byId: {
           ...state.byId,
           [action.event.taskId]: {
             ...cur,
-            downloadedBytes: action.event.downloadedBytes,
-            totalBytes: action.event.totalBytes,
+            downloadedBytes: nextDownloaded,
+            totalBytes: nextTotal,
             bytesPerSecond: action.event.bytesPerSecond,
             status: action.event.status || cur.status,
           },

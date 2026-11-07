@@ -5,23 +5,27 @@ const interceptEl = document.getElementById("interceptDownloads");
 const forwardEl = document.getElementById("forwardCookies");
 const refreshBtn = document.getElementById("refresh");
 
+function setStatus(text, state) {
+  statusEl.textContent = text;
+  statusEl.dataset.state = state;
+}
+
 async function refresh() {
   errorEl.hidden = true;
-  statusEl.textContent = "Checking host…";
+  setStatus("Checking host…", "checking");
   const res = await chrome.runtime.sendMessage({ type: "ping" });
   if (!res?.ok) {
-    statusEl.textContent = "Host unavailable";
+    setStatus("Host unavailable", "error");
     errorEl.hidden = false;
     errorEl.textContent =
       res?.message || res?.error || "Cannot reach odm-nmhost";
     return;
   }
   if (!res.enabled) {
-    statusEl.textContent =
-      "Host reachable — enable integration in ODM Settings";
+    setStatus("Host reachable — enable integration in ODM Settings", "warn");
     return;
   }
-  statusEl.textContent = "Connected — browser integration enabled";
+  setStatus("Connected — browser integration enabled", "ok");
 }
 
 async function loadPrefs() {

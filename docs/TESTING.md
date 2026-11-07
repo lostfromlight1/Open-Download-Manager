@@ -58,6 +58,8 @@ Required server behaviors:
 - Phase 8: `apps/browser-extension` `node --test intercept.test.js` covers http(s) accept, HTML/blob skip; desktop UI remains covered by existing frontend tests.
 - Phase 9: browserhost cookie/referer validation; manager ephemeral Cookie handoff; engine ExtraHeaders allowlist; storage `ui.launch_at_login`; tray tooltip formatting.
 - Phase 10: `internal/media` probe JSON fixtures, progress line parse, YouTube URL allowlist, tools path resolution (no network); storage media columns + `media.*` settings.
+- UI polish: frontend `formatMbps` + `partitionSelection` unit tests; manual check of active-row speed graph and bulk select toolbar.
+- Live YouTube (opt-in): `ODM_LIVE_YT=1 go test ./internal/media -run LiveDownload -count=1 -timeout 30m -v` and `ODM_LIVE_YT=1 go test ./internal/manager -run LiveMediaManager -count=1 -timeout 30m -v` (needs helpers under `%APPDATA%/odm/tools`).
 
 ## Quality gates
 
