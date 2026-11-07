@@ -2,12 +2,14 @@ import { Events } from "@wailsio/runtime";
 import type {
   ChangedEventDTO,
   DecisionRequiredDTO,
+  MediaPickRequiredDTO,
   ProgressEventDTO,
 } from "../features/downloads/downloadTypes";
 
 export const EVENT_PROGRESS = "odm:download-progress";
 export const EVENT_CHANGED = "odm:download-changed";
 export const EVENT_DECISION = "odm:decision-required";
+export const EVENT_MEDIA_PICK = "odm:media-pick-required";
 
 export type Unsubscribe = () => void;
 
@@ -32,5 +34,13 @@ export function subscribeDecision(
 ): Unsubscribe {
   return Events.On(EVENT_DECISION, (e) => {
     handler(e.data as DecisionRequiredDTO);
+  });
+}
+
+export function subscribeMediaPick(
+  handler: (ev: MediaPickRequiredDTO) => void,
+): Unsubscribe {
+  return Events.On(EVENT_MEDIA_PICK, (e) => {
+    handler(e.data as MediaPickRequiredDTO);
   });
 }

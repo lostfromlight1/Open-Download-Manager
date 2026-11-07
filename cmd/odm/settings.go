@@ -61,6 +61,9 @@ func runSettingsShow(ctx context.Context, args []string) error {
 	fmt.Fprintf(os.Stdout, "browser.chrome_extension_id=%s\n", cfg.ChromeExtensionID)
 	fmt.Fprintf(os.Stdout, "ui.close_to_tray=%v\n", cfg.CloseToTray)
 	fmt.Fprintf(os.Stdout, "ui.launch_at_login=%v\n", cfg.LaunchAtLogin)
+	fmt.Fprintf(os.Stdout, "media.enabled=%v\n", cfg.MediaEnabled)
+	fmt.Fprintf(os.Stdout, "media.ytdlp_path=%s\n", cfg.MediaYtDlpPath)
+	fmt.Fprintf(os.Stdout, "media.ffmpeg_path=%s\n", cfg.MediaFFmpegPath)
 	return nil
 }
 
@@ -205,6 +208,22 @@ func applySetting(cfg *storage.Settings, key, value string) error {
 		default:
 			return fmt.Errorf("ui.launch_at_login must be true or false")
 		}
+		return nil
+	case storage.SettingMediaEnabled, "media-enabled", "youtube":
+		switch strings.ToLower(strings.TrimSpace(value)) {
+		case "true", "1", "yes", "on":
+			cfg.MediaEnabled = true
+		case "false", "0", "no", "off":
+			cfg.MediaEnabled = false
+		default:
+			return fmt.Errorf("media.enabled must be true or false")
+		}
+		return nil
+	case storage.SettingMediaYtDlpPath, "media-ytdlp-path", "ytdlp-path":
+		cfg.MediaYtDlpPath = strings.TrimSpace(value)
+		return nil
+	case storage.SettingMediaFFmpegPath, "media-ffmpeg-path", "ffmpeg-path":
+		cfg.MediaFFmpegPath = strings.TrimSpace(value)
 		return nil
 	default:
 		return fmt.Errorf("unknown settings key %q", key)

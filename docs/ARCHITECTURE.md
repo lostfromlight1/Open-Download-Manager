@@ -21,6 +21,8 @@ Application orchestration layer
         |         +---- File writer
         |         +---- Retry / cancellation
         |
+        +---- Media runner (Phase 10; opt-in yt-dlp for YouTube)
+        |
         +---- Persistence (SQLite)
         |
         +---- Optional Access provider (Network Access / Tunneling track)
@@ -40,7 +42,7 @@ Browser extension ---> Native Messaging host ---> enqueue API
 
 ### Engine packages (`internal/...`)
 
-Reusable Go libraries. They must not import Wails. They own transfer mechanics, byte-range validation, segment execution, safe file writing, proxy-aware transport, and persistence interfaces.
+Reusable Go libraries. They must not import Wails. They own transfer mechanics, byte-range validation, segment execution, safe file writing, proxy-aware transport, and persistence interfaces. `internal/media` owns YouTube probe/download via managed yt-dlp; the HTTP engine is unchanged for ordinary files.
 
 ### Desktop (`apps/desktop`)
 

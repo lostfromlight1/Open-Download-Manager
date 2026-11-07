@@ -19,5 +19,7 @@ func openManagerFromFlags(dataDir string, decisions manager.DecisionHandler) (*m
 	if err != nil {
 		return nil, nil, "", nil, fmt.Errorf("open database in %s: %w", dir, err)
 	}
-	return manager.New(store, decisions), store, dir, store.Close, nil
+	mgr := manager.New(store, decisions)
+	mgr.SetDataDir(dir)
+	return mgr, store, dir, store.Close, nil
 }

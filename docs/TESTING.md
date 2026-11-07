@@ -57,6 +57,7 @@ Required server behaviors:
 - Phase 7: `internal/storage` round-trips `ui.close_to_tray`; `apps/desktop` covers `ShouldHideOnClose` and resume-mismatch `NeedUI` (show window when a decision is required).
 - Phase 8: `apps/browser-extension` `node --test intercept.test.js` covers http(s) accept, HTML/blob skip; desktop UI remains covered by existing frontend tests.
 - Phase 9: browserhost cookie/referer validation; manager ephemeral Cookie handoff; engine ExtraHeaders allowlist; storage `ui.launch_at_login`; tray tooltip formatting.
+- Phase 10: `internal/media` probe JSON fixtures, progress line parse, YouTube URL allowlist, tools path resolution (no network); storage media columns + `media.*` settings.
 
 ## Quality gates
 
@@ -140,6 +141,18 @@ Before merging:
 2. Confirm tray menu includes Pause all active / Resume paused; active download updates tooltip speed.
 3. Quit; sign out/in or run the registered command with `--hidden` → app should start to tray without showing the window until Show.
 4. Disable launch-at-login → Save → autostart entry removed.
+
+## Phase 10 YouTube smoke (manual)
+
+1. Settings → set default download folder → enable **YouTube downloads** → Save (helpers download into app data `tools/`; status shows ready).
+2. Add Download → paste a single `youtube.com/watch` or `youtu.be` URL → choose Best / a height / Audio only → task progresses and file appears in the folder.
+3. Paste a playlist or channel URL → select a few entries (not all required) → only those tasks enqueue.
+4. Cancel a running media task → process stops; partials follow keep/delete like ordinary downloads.
+5. Disable YouTube downloads → Save → Add a YouTube URL → clear error pointing at Settings.
+6. Ordinary http(s) download still works with media enabled or disabled.
+7. CLI: `odm settings show` lists `media.enabled`; `odm settings set media.enabled true` persists (helpers install from desktop Settings Save).
+8. Extension: right-click a YouTube link → **Download YouTube with ODM (choose format)…** → desktop opens format picker (media enabled + host registered). Intercept must not enqueue `youtube.com/watch` page scraps. Click capture must not block watching videos on youtube.com.
+9. If probe fails with “page needs to be reloaded”, Settings → **Retry helper install** (upgrades pinned yt-dlp) and retry the pick.
 
 ## Reliability tests
 

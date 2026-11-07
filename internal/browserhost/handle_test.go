@@ -84,4 +84,39 @@ func TestHandleEnqueueDisabledAndHappyPath(t *testing.T) {
 	if filepath.Base(tk.DestinationPath) != "mine.bin" {
 		t.Fatalf("dest=%q", tk.DestinationPath)
 	}
+
+	yt := h.Handle(ctx, Request{
+		V:      1,
+		Action: "enqueue",
+		URL:    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+	})
+	if yt.OK || yt.Error != "youtube_use_media_pick" {
+		t.Fatalf("expected youtube_use_media_pick: %+v", yt)
+	}
+
+	pickOff := h.Handle(ctx, Request{
+		V:      1,
+		Action: "media_pick",
+		URL:    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+	})
+	if pickOff.OK || pickOff.Error != "media_disabled" {
+		t.Fatalf("expected media_disabled: %+v", pickOff)
+	}
+
+	cfg.MediaEnabled = true
+	if err := store.SaveSettings(ctx, cfg); err != nil {
+		t.Fatal(err)
+	}
+	pick := h.Handle(ctx, Request{
+		V:      1,
+		Action: "media_pick",
+		URL:    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+	})
+	if !pick.OK {
+		t.Fatalf("media_pick: %+v", pick)
+	}
+	pending, err := store.GetSetting(ctx, storage.SettingMediaPendingPickURL)
+	if err != nil || pending == "" {
+		t.Fatalf("pending url=%q err=%v", pending, err)
+	}
 }

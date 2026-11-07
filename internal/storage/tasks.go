@@ -19,13 +19,15 @@ func (s *Store) InsertTask(ctx context.Context, t task.Task) error {
 INSERT INTO tasks(
     id, url, display_name, destination_path, state,
     total_bytes, downloaded_bytes, etag, last_modified,
-    error_code, error_message, retry_count, created_at, updated_at
-) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    error_code, error_message, retry_count, created_at, updated_at,
+    media_source, media_format_id, media_webpage_url, media_playlist_id
+) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		t.ID, t.URL, t.DisplayName, t.DestinationPath, string(t.State),
 		nullInt64(t.TotalBytes), t.DownloadedBytes, t.ETag, t.LastModified,
 		t.ErrorCode, t.ErrorMessage, t.RetryCount,
 		t.CreatedAt.UTC().Format(time.RFC3339Nano),
 		t.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		t.MediaSource, t.MediaFormatID, t.MediaWebpageURL, t.MediaPlaylistID,
 	)
 	if err != nil {
 		return fmt.Errorf("insert task: %w", err)
@@ -39,12 +41,14 @@ func (s *Store) UpdateTask(ctx context.Context, t task.Task) error {
 UPDATE tasks SET
     url=?, display_name=?, destination_path=?, state=?,
     total_bytes=?, downloaded_bytes=?, etag=?, last_modified=?,
-    error_code=?, error_message=?, retry_count=?, updated_at=?
+    error_code=?, error_message=?, retry_count=?, updated_at=?,
+    media_source=?, media_format_id=?, media_webpage_url=?, media_playlist_id=?
 WHERE id=?`,
 		t.URL, t.DisplayName, t.DestinationPath, string(t.State),
 		nullInt64(t.TotalBytes), t.DownloadedBytes, t.ETag, t.LastModified,
 		t.ErrorCode, t.ErrorMessage, t.RetryCount,
 		t.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		t.MediaSource, t.MediaFormatID, t.MediaWebpageURL, t.MediaPlaylistID,
 		t.ID,
 	)
 	if err != nil {
@@ -65,7 +69,8 @@ func (s *Store) GetTask(ctx context.Context, id string) (task.Task, error) {
 	row := s.db.QueryRowContext(ctx, `
 SELECT id, url, display_name, destination_path, state,
        total_bytes, downloaded_bytes, etag, last_modified,
-       error_code, error_message, retry_count, created_at, updated_at
+       error_code, error_message, retry_count, created_at, updated_at,
+       media_source, media_format_id, media_webpage_url, media_playlist_id
 FROM tasks WHERE id=?`, id)
 	t, err := scanTask(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -79,7 +84,8 @@ func (s *Store) ListTasks(ctx context.Context) ([]task.Task, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT id, url, display_name, destination_path, state,
        total_bytes, downloaded_bytes, etag, last_modified,
-       error_code, error_message, retry_count, created_at, updated_at
+       error_code, error_message, retry_count, created_at, updated_at,
+       media_source, media_format_id, media_webpage_url, media_playlist_id
 FROM tasks
 ORDER BY updated_at DESC`)
 	if err != nil {
@@ -115,7 +121,8 @@ func (s *Store) ListByStates(ctx context.Context, states ...task.State) ([]task.
 	q := fmt.Sprintf(`
 SELECT id, url, display_name, destination_path, state,
        total_bytes, downloaded_bytes, etag, last_modified,
-       error_code, error_message, retry_count, created_at, updated_at
+       error_code, error_message, retry_count, created_at, updated_at,
+       media_source, media_format_id, media_webpage_url, media_playlist_id
 FROM tasks
 WHERE state IN (%s)
 ORDER BY created_at ASC`, joinComma(placeholders))
@@ -170,6 +177,7 @@ func scanTask(row rowScanner) (task.Task, error) {
 		&t.ID, &t.URL, &t.DisplayName, &t.DestinationPath, &state,
 		&total, &t.DownloadedBytes, &t.ETag, &t.LastModified,
 		&t.ErrorCode, &t.ErrorMessage, &t.RetryCount, &createdRaw, &updatedRaw,
+		&t.MediaSource, &t.MediaFormatID, &t.MediaWebpageURL, &t.MediaPlaylistID,
 	)
 	if err != nil {
 		return task.Task{}, err

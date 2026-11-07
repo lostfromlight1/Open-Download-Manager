@@ -29,6 +29,12 @@ type Task struct {
 	ErrorMessage string
 	RetryCount   int
 
+	// Media fields (Phase 10). Empty MediaSource means ordinary http(s) download.
+	MediaSource     string // "" | "youtube"
+	MediaFormatID   string
+	MediaWebpageURL string
+	MediaPlaylistID string
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

@@ -57,7 +57,7 @@ func ParseRequest(raw []byte) (Request, error) {
 		return Request{}, fmt.Errorf("unsupported protocol version %d", req.V)
 	}
 	switch req.Action {
-	case "ping", "enqueue":
+	case "ping", "enqueue", "media_pick":
 	default:
 		return Request{}, fmt.Errorf("unsupported action %q", req.Action)
 	}

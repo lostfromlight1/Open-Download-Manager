@@ -1,4 +1,4 @@
-/* global shouldInterceptDownload, downloadBasename, buildCookieHeader */
+/* global shouldInterceptDownload, isYouTubePageURL, downloadBasename, buildCookieHeader */
 // Chrome MV3 service worker loads helpers via importScripts.
 // Firefox lists intercept.js before this file in manifest.firefox.json.
 if (typeof importScripts === "function") {
@@ -7,6 +7,7 @@ if (typeof importScripts === "function") {
 
 const HOST_NAME = "app.opendownloadmanager.native";
 const MENU_ID = "odm-send-link";
+const MENU_YT_ID = "odm-youtube-format";
 const CLICK_SCRIPT_ID = "odm-click-capture";
 
 /** Download IDs currently being handed off to ODM (avoid double cancel). */
@@ -19,6 +20,11 @@ chrome.runtime.onInstalled.addListener(() => {
       title: "Download with ODM",
       contexts: ["link"],
     });
+    chrome.contextMenus.create({
+      id: MENU_YT_ID,
+      title: "Download YouTube with ODM (choose format)…",
+      contexts: ["link", "page", "video"],
+    });
   });
   void restorePrefs();
 });
@@ -28,7 +34,24 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.contextMenus.onClicked.addListener((info) => {
+  const url = info.linkUrl || info.pageUrl || "";
+  if (!url) {
+    return;
+  }
+  if (info.menuItemId === MENU_YT_ID) {
+    void mediaPick(url).then((result) => {
+      void chrome.storage.session?.set?.({ lastResult: result });
+    });
+    return;
+  }
   if (info.menuItemId !== MENU_ID || !info.linkUrl) {
+    return;
+  }
+  // YouTube links need the format picker — do not enqueue as raw HTTP.
+  if (isYouTubePageURL(info.linkUrl)) {
+    void mediaPick(info.linkUrl).then((result) => {
+      void chrome.storage.session?.set?.({ lastResult: result });
+    });
     return;
   }
   void enqueue(info.linkUrl, "").then((result) => {
@@ -42,7 +65,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg?.type === "enqueue" && typeof msg.url === "string") {
+    if (isYouTubePageURL(msg.url)) {
+      void mediaPick(msg.url).then(sendResponse);
+      return true;
+    }
     void enqueue(msg.url, msg.filename || "").then(sendResponse);
+    return true;
+  }
+  if (msg?.type === "media_pick" && typeof msg.url === "string") {
+    void mediaPick(msg.url).then(sendResponse);
     return true;
   }
   if (msg?.type === "getPrefs") {
@@ -142,6 +173,11 @@ function enqueue(url, filename, cookie, referer) {
     payload.referer = referer;
   }
   return sendNative(payload);
+}
+
+/** Ask the desktop app to open the YouTube format / playlist picker. */
+function mediaPick(url) {
+  return sendNative({ v: 1, action: "media_pick", url });
 }
 
 async function setClickCapture(enabled) {

@@ -24,6 +24,10 @@ func TestParseRequestRejectsUnknownFieldsAndActions(t *testing.T) {
 	if err != nil || req.Action != "ping" {
 		t.Fatalf("ping: %+v %v", req, err)
 	}
+	req, err = ParseRequest([]byte(`{"v":1,"action":"media_pick","url":"https://youtu.be/x"}`))
+	if err != nil || req.Action != "media_pick" {
+		t.Fatalf("media_pick: %+v %v", req, err)
+	}
 }
 
 func TestParseRequestRejectsOversized(t *testing.T) {

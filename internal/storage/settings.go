@@ -27,6 +27,12 @@ const (
 	SettingChromeExtensionID  = "browser.chrome_extension_id" // for NM host allows_origins
 	SettingCloseToTray        = "ui.close_to_tray"            // hide to tray instead of quit
 	SettingLaunchAtLogin      = "ui.launch_at_login"          // OS autostart (desktop)
+	SettingMediaEnabled       = "media.enabled"               // YouTube via yt-dlp
+	SettingMediaYtDlpPath     = "media.ytdlp_path"            // optional override
+	SettingMediaFFmpegPath    = "media.ffmpeg_path"           // optional override
+	// SettingMediaPendingPickURL is a one-shot IPC flag from odm-nmhost → desktop
+	// (not part of Settings DTO / SaveSettings).
+	SettingMediaPendingPickURL = "media.pending_pick_url"
 )
 
 // Settings is the typed view of persisted configuration.
@@ -45,6 +51,9 @@ type Settings struct {
 	ChromeExtensionID         string // optional; used when registering Chrome NM host
 	CloseToTray               bool   // keep RunQueue alive when the window is closed
 	LaunchAtLogin             bool   // register OS login autostart (desktop)
+	MediaEnabled              bool   // YouTube / media downloads via yt-dlp
+	MediaYtDlpPath            string // optional override; empty = managed/PATH
+	MediaFFmpegPath           string // optional override; empty = managed/PATH
 }
 
 // DefaultSettings returns Phase 2/3 defaults.
@@ -64,6 +73,9 @@ func DefaultSettings() Settings {
 		ChromeExtensionID:         "",
 		CloseToTray:               true,
 		LaunchAtLogin:             false,
+		MediaEnabled:              false,
+		MediaYtDlpPath:            "",
+		MediaFFmpegPath:           "",
 	}
 }
 
@@ -124,6 +136,12 @@ func (s *Store) GetSettings(ctx context.Context) (Settings, error) {
 			out.CloseToTray = strings.EqualFold(strings.TrimSpace(v), "true") || v == "1"
 		case SettingLaunchAtLogin:
 			out.LaunchAtLogin = strings.EqualFold(strings.TrimSpace(v), "true") || v == "1"
+		case SettingMediaEnabled:
+			out.MediaEnabled = strings.EqualFold(strings.TrimSpace(v), "true") || v == "1"
+		case SettingMediaYtDlpPath:
+			out.MediaYtDlpPath = strings.TrimSpace(v)
+		case SettingMediaFFmpegPath:
+			out.MediaFFmpegPath = strings.TrimSpace(v)
 		}
 	}
 	return out, rows.Err()
@@ -169,6 +187,9 @@ func (s *Store) SaveSettings(ctx context.Context, cfg Settings) error {
 		SettingChromeExtensionID:  strings.TrimSpace(cfg.ChromeExtensionID),
 		SettingCloseToTray:        strconv.FormatBool(cfg.CloseToTray),
 		SettingLaunchAtLogin:      strconv.FormatBool(cfg.LaunchAtLogin),
+		SettingMediaEnabled:       strconv.FormatBool(cfg.MediaEnabled),
+		SettingMediaYtDlpPath:     strings.TrimSpace(cfg.MediaYtDlpPath),
+		SettingMediaFFmpegPath:    strings.TrimSpace(cfg.MediaFFmpegPath),
 	}
 	for k, v := range pairs {
 		if _, err := tx.ExecContext(ctx, `

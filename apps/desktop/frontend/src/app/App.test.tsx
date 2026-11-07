@@ -7,6 +7,7 @@ vi.mock("../services/desktopEvents", () => ({
   subscribeProgress: () => () => undefined,
   subscribeChanged: () => () => undefined,
   subscribeDecision: () => () => undefined,
+  subscribeMediaPick: () => () => undefined,
 }));
 
 function mockApi(partial: Partial<DesktopApi> = {}): DesktopApi {
@@ -33,6 +34,11 @@ function mockApi(partial: Partial<DesktopApi> = {}): DesktopApi {
       browserHostMessage: "",
       closeToTray: true,
       launchAtLogin: false,
+      mediaEnabled: false,
+      mediaYtdlpPath: "",
+      mediaFfmpegPath: "",
+      mediaToolsReady: false,
+      mediaToolsMessage: "",
     }),
     getDownload: async () => {
       throw new Error("not used");
@@ -43,6 +49,13 @@ function mockApi(partial: Partial<DesktopApi> = {}): DesktopApi {
     resolveDecision: async () => undefined,
     downloadsAvailable: async () => true,
     statusMessage: async () => "Download manager ready",
+    isYouTubeURL: async () => false,
+    probeMediaURL: async () => {
+      throw new Error("not used");
+    },
+    addMediaDownload: async () => {
+      throw new Error("not used");
+    },
     ...partial,
   };
 }

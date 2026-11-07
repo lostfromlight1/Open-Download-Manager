@@ -207,6 +207,30 @@ Keep downloads alive in the **same** desktop process when the window is hidden (
 - Launch-at-login opt-in registers Autostart; `--hidden` starts to tray
 - Tray shows live speed; Pause/Resume work; Quit stops the queue
 
+## Phase 10 — YouTube downloads (managed yt-dlp)
+
+**Status:** implemented (YouTube allowlist; managed helpers; format + playlist pickers).
+
+**Deliverables**
+
+- `internal/media`: Resolve/EnsureTools (pinned yt-dlp + ffmpeg under data dir), Probe (`-J` / flat playlist), Download with progress parse + ctx cancel
+- Settings: `media.enabled`, `media.ytdlp_path`, `media.ffmpeg_path`; EnsureTools on enable
+- Task columns: `media_source`, `media_format_id`, `media_webpage_url`, `media_playlist_id` (migration 003)
+- Manager `AddMedia` / `executeMedia`; ordinary `Add` rejects YouTube URLs
+- Desktop: ProbeMediaURL / AddMediaDownload / IsYouTubeURL; Settings toggle; FormatPicker + PlaylistPicker
+- Docs/SECURITY: subprocess allowlist, no shell concat, pinned upstream URLs, user consent
+
+**Deferred**
+
+- Non-YouTube extractors, subtitles/chapters UI, sponsorblock, cookies-from-browser
+- Silent browser auto-download of YouTube without format selection
+
+**Exit criteria**
+
+- Media enabled + helpers installed → probe single URL, choose format (incl. audio), file lands with UI progress
+- Playlist/channel → selectable entries; only selected become tasks
+- Media disabled → clear Settings hint; http(s) engine unchanged
+
 ## Phase N — Network Access / Tunneling track
 
 **After** reliable downloading and proxy support.

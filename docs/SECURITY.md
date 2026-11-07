@@ -48,6 +48,20 @@ The application downloads untrusted remote content and accepts URLs and commands
 - Protect release workflows and signing secrets.
 - Publish checksums for release artifacts.
 
+## YouTube / media helpers (yt-dlp)
+
+Opt-in only (`media.enabled`, default off). When enabled, ODM may download pinned third-party binaries (yt-dlp, ffmpeg) into the app data `tools/` directory from fixed upstream release URLs.
+
+Controls:
+- Do not invoke a shell; pass argv arrays to `exec.Command` / `CommandContext`.
+- Allowlist YouTube host patterns for probe/download; reject other sites in MVP.
+- Validate destination directory and sanitize output basename templates.
+- Cancel via context cancellation (kill process); do not leave orphaned writers writing outside the destination.
+- Do not log cookies, Authorization, or signed query strings from media URLs.
+- Pin helper versions; prefer checksum verification when publishing updates.
+- Document that users remain responsible for rights and service terms; feature stays disabled until helpers are ready or PATH provides them.
+- Threat note: running third-party binaries expands the trusted computing base — only fetch from pinned upstream URLs after explicit user opt-in.
+
 ## Network Access / Tunneling
 
 If an optional access/tunneling component is added:

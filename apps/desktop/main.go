@@ -87,9 +87,11 @@ func main() {
 	tray := newTrayController(app, closeToTray)
 	shellSvc.bindTray(tray)
 	downloadSvc.setTrayController(tray)
-	decisions.SetNeedUI(func() {
+	showUI := func() {
 		tray.ShowMainWindow()
-	})
+	}
+	decisions.SetNeedUI(showUI)
+	downloadSvc.setNeedUI(showUI)
 	// Re-apply autostart on each launch so the OS entry stays in sync.
 	syncLaunchAtLogin(app, launchAtLogin)
 

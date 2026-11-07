@@ -78,6 +78,22 @@ Feature labels:
 
 Do not collect page contents, browsing history, or cookies by default. Do not inject scripts broadly without a documented need.
 
+## YouTube / media downloads (Phase 10)
+
+Opt-in in Settings (`media.enabled`, default off). ODM downloads and pins **yt-dlp** and **ffmpeg** into the app data `tools/` directory (paths overridable via `media.ytdlp_path` / `media.ffmpeg_path`). Ordinary http(s) downloads still use the Go engine.
+
+| Feature | Priority | Acceptance notes |
+|---|---|---|
+| Enable YouTube downloads | MVP (Phase 10) | Off by default; short rights/ToS notice; requires default download folder |
+| Managed helpers | MVP (Phase 10) | Auto-install pinned yt-dlp/ffmpeg on enable; PATH fallback if present |
+| Single video format picker | MVP (Phase 10) | Best / height formats / audio-only (`ba`) |
+| Playlist / channel select | MVP (Phase 10) | Flat list → multi-select → enqueue each as its own task (cap 100) |
+| Progress + cancel | MVP (Phase 10) | Progress from yt-dlp output; cancel kills process |
+| YouTube host allowlist | MVP (Phase 10) | Reject non-YouTube sites even if yt-dlp supports them |
+| Extension “choose format” | MVP (Phase 10) | Context menu / page action → desktop format picker; intercept never steals YouTube hosts |
+
+User is responsible for complying with YouTube terms and only downloading content they have rights to.
+
 ## Protocol and networking scope
 
 ### MVP
@@ -118,6 +134,6 @@ Do not collect page contents, browsing history, or cookies by default. Do not in
 - BitTorrent.
 - DRM bypass.
 - Paywall/authentication bypass.
-- Video streaming extraction.
+- Arbitrary yt-dlp sites beyond YouTube (Phase 10 is YouTube-only).
 - Cloud account/synchronization.
 - Remote-control server.

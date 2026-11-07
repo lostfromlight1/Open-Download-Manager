@@ -37,7 +37,9 @@ export function SettingsPage({ onBack, onSaved }: Props) {
       const saved = await api.updateSettings(form);
       setForm({ ...saved, browserHostMessage: saved.browserHostMessage || "" });
       onSaved(saved);
-      if (saved.browserHostMessage?.trim()) {
+      if (saved.mediaToolsMessage?.trim() && form.mediaEnabled) {
+        setSavedMsg(saved.mediaToolsMessage.trim());
+      } else if (saved.browserHostMessage?.trim()) {
         setSavedMsg(saved.browserHostMessage.trim());
       } else if (enabling) {
         setSavedMsg(
@@ -60,6 +62,43 @@ export function SettingsPage({ onBack, onSaved }: Props) {
       } catch {
         // keep the primary error
       }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function retryMediaTools() {
+    if (!form?.mediaEnabled) return;
+    setBusy(true);
+    setError(null);
+    setSavedMsg(null);
+    try {
+      const api = await getDesktopApi();
+      // Re-save kicks a background EnsureTools that resumes partial ffmpeg downloads.
+      const saved = await api.updateSettings({ ...form, mediaEnabled: true });
+      setForm(saved);
+      onSaved(saved);
+      setSavedMsg(
+        saved.mediaToolsMessage ||
+          "Helper install started — keep ODM open until ffmpeg finishes (~190MB).",
+      );
+      // Poll a few times while the background download runs.
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const latest = await api.getSettings();
+        setForm(latest);
+        onSaved(latest);
+        if (latest.mediaToolsReady) {
+          setSavedMsg(latest.mediaToolsMessage || "Helpers ready.");
+          break;
+        }
+        if (latest.mediaToolsMessage?.includes("Helper install issue")) {
+          setError(latest.mediaToolsMessage);
+          break;
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -231,6 +270,41 @@ export function SettingsPage({ onBack, onSaved }: Props) {
               Starts hidden to the tray (with --hidden). Turn off and Save to
               remove the login entry.
             </p>
+          </fieldset>
+
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-semibold">YouTube downloads</legend>
+            <p className="text-sm text-[var(--color-text-muted)]">
+              Opt-in. Uses managed yt-dlp/ffmpeg helpers under your ODM data
+              folder. You are responsible for complying with YouTube&apos;s
+              terms and only downloading content you have rights to. A default
+              download folder is required.
+            </p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.mediaEnabled}
+                onChange={(e) =>
+                  setForm({ ...form, mediaEnabled: e.target.checked })
+                }
+              />
+              Enable YouTube downloads
+            </label>
+            {form.mediaToolsMessage ? (
+              <p className="text-sm text-[var(--color-text-muted)]" role="status">
+                {form.mediaToolsMessage}
+              </p>
+            ) : null}
+            {form.mediaEnabled && !form.mediaToolsReady ? (
+              <button
+                type="button"
+                className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
+                disabled={busy}
+                onClick={() => void retryMediaTools()}
+              >
+                {busy ? "Working…" : "Retry helper install"}
+              </button>
+            ) : null}
           </fieldset>
 
           <fieldset className="space-y-3">

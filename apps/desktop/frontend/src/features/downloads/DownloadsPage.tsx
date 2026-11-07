@@ -11,6 +11,7 @@ import { getDesktopApi } from "../../services/desktopApi";
 import {
   subscribeChanged,
   subscribeDecision,
+  subscribeMediaPick,
   subscribeProgress,
 } from "../../services/desktopEvents";
 import { AddDownloadDialog } from "./AddDownloadDialog";
@@ -18,8 +19,10 @@ import { DownloadDetail } from "./DownloadDetail";
 import { DownloadRow } from "./DownloadRow";
 import { downloadsReducer, initialDownloadsState } from "./downloadReducer";
 import { FileActionDialog } from "./FileActionDialog";
+import { MediaFormatDialog } from "./MediaFormatDialog";
+import { MediaPlaylistDialog } from "./MediaPlaylistDialog";
 import { ResumeMismatchDialog } from "./ResumeMismatchDialog";
-import type { DownloadDTO, FilterTab } from "./downloadTypes";
+import type { DownloadDTO, FilterTab, MediaProbeDTO } from "./downloadTypes";
 import { isActiveStatus } from "./downloadTypes";
 
 type Props = {
@@ -44,6 +47,8 @@ export function DownloadsPage({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [addBusy, setAddBusy] = useState(false);
+  const [mediaProbe, setMediaProbe] = useState<MediaProbeDTO | null>(null);
+  const [mediaDest, setMediaDest] = useState(defaultDir);
   const notifyRef = useRef(notifyOnComplete);
   const prevStatus = useRef<Record<string, string>>({});
 
@@ -92,12 +97,31 @@ export function DownloadsPage({
     const offDecision = subscribeDecision((event) =>
       dispatch({ type: "decision", event }),
     );
+    const offMediaPick = subscribeMediaPick((event) => {
+      void (async () => {
+        setAddBusy(true);
+        try {
+          const api = await getDesktopApi();
+          const probe = await api.probeMediaURL(event.url);
+          setMediaDest(defaultDir);
+          setMediaProbe(probe);
+        } catch (e) {
+          dispatch({
+            type: "error",
+            message: e instanceof Error ? e.message : String(e),
+          });
+        } finally {
+          setAddBusy(false);
+        }
+      })();
+    });
     return () => {
       offProgress();
       offChanged();
       offDecision();
+      offMediaPick();
     };
-  }, [refresh]);
+  }, [refresh, defaultDir]);
 
   useEffect(() => {
     for (const d of Object.values(state.byId)) {
@@ -323,8 +347,68 @@ export function DownloadsPage({
             setAddBusy(true);
             try {
               const api = await getDesktopApi();
+              const isYt = await api.isYouTubeURL(url);
+              if (isYt) {
+                const probe = await api.probeMediaURL(url);
+                setMediaDest(destination.trim() || defaultDir);
+                setShowAdd(false);
+                setMediaProbe(probe);
+                return;
+              }
               await api.addDownload({ url, destination });
               setShowAdd(false);
+              await refresh();
+            } finally {
+              setAddBusy(false);
+            }
+          }}
+        />
+      ) : null}
+
+      {mediaProbe && mediaProbe.kind === "playlist" ? (
+        <MediaPlaylistDialog
+          probe={mediaProbe}
+          busy={addBusy}
+          onCancel={() => setMediaProbe(null)}
+          onConfirm={async (urls) => {
+            setAddBusy(true);
+            try {
+              const api = await getDesktopApi();
+              for (const item of urls) {
+                await api.addMediaDownload({
+                  webpageUrl: item.url,
+                  formatId: "best",
+                  displayName: item.title,
+                  destDir: mediaDest,
+                  playlistId: mediaProbe.id,
+                });
+              }
+              setMediaProbe(null);
+              await refresh();
+            } finally {
+              setAddBusy(false);
+            }
+          }}
+        />
+      ) : null}
+
+      {mediaProbe && mediaProbe.kind !== "playlist" ? (
+        <MediaFormatDialog
+          probe={mediaProbe}
+          busy={addBusy}
+          onCancel={() => setMediaProbe(null)}
+          onConfirm={async (formatId) => {
+            setAddBusy(true);
+            try {
+              const api = await getDesktopApi();
+              await api.addMediaDownload({
+                webpageUrl: mediaProbe.webpageUrl,
+                formatId,
+                displayName: mediaProbe.title,
+                destDir: mediaDest,
+                playlistId: "",
+              });
+              setMediaProbe(null);
               await refresh();
             } finally {
               setAddBusy(false);

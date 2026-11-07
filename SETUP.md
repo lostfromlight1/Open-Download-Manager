@@ -340,6 +340,7 @@ Use Go ≥ 1.26 and Wails **v3.1.0** (not a nightly).
 - Unsigned packaging: Windows NSIS, macOS `.app`, Linux `.deb` (CI `desktop-package`)
 - Opt-in browser extension + `odm-nmhost` native messaging (context-menu enqueue)
 - Opt-in browser download interception + optional cookie/Referer handoff (memory-only)
+- Opt-in YouTube downloads (Settings → enable; managed yt-dlp/ffmpeg — no manual install required)
 - `odm version` and `odm download` (single-stream + segmented HTTP/HTTPS, resume, retry, proxy modes)
 - `odm task` / `odm queue` / `odm settings` (SQLite queue shared with desktop, concurrency, connections, keep/delete, mismatch policy, proxy persistence, close-to-tray)
 

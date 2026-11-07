@@ -15,6 +15,7 @@ Open-Download-Manager/
 ├── internal/
 │   ├── appdir/                  # OS data-dir resolution
 │   ├── engine/                  # single-stream + segmented download logic (no Wails)
+│   ├── media/                   # YouTube probe/download via managed yt-dlp (Phase 10)
 │   ├── manager/                 # queue, lifecycle, user decisions
 │   ├── netx/                    # HTTP client, proxy modes, timeouts
 │   ├── storage/                 # SQLite + migrations
@@ -53,3 +54,4 @@ Open-Download-Manager/
 - Phase 4: desktop DownloadService + React dashboard/settings wired to manager events.
 - Phase 5: packaging metadata under `apps/desktop/build/`; CI `desktop-package` job uploads NSIS / `.app` / `.deb`.
 - Phase 6: `apps/browser-extension` + `cmd/odm-nmhost` enqueue via shared SQLite.
+- Phase 10: `internal/media` + Settings YouTube opt-in; helpers under app data `tools/`.

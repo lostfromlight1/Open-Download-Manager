@@ -10,10 +10,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/lostfromlight1/Open-Download-Manager/internal/engine"
+	"github.com/lostfromlight1/Open-Download-Manager/internal/media"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/netx"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/storage"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/task"
@@ -49,6 +51,7 @@ type Listener interface {
 type Manager struct {
 	store     *storage.Store
 	decisions DecisionHandler
+	dataDir   string // app data dir for managed yt-dlp/ffmpeg
 
 	mu       sync.Mutex
 	running  map[string]context.CancelFunc // taskID → cancel for in-flight work
@@ -57,6 +60,13 @@ type Manager struct {
 	wake     chan struct{}                 // signal scheduler to look for work
 	closed   bool
 	listener Listener
+}
+
+// SetDataDir sets the ODM data directory (tools live under dataDir/tools).
+func (m *Manager) SetDataDir(dir string) {
+	m.mu.Lock()
+	m.dataDir = dir
+	m.mu.Unlock()
 }
 
 // New constructs a Manager. decisions may be nil (defaults to keep + abort).
@@ -98,8 +108,20 @@ func (m *Manager) notifyProgress(taskID string, ev engine.ProgressEvent) {
 	}
 }
 
+// AddMediaOptions configures a YouTube / media download task.
+type AddMediaOptions struct {
+	WebpageURL  string
+	FormatID    string
+	DestDir     string
+	DisplayName string
+	PlaylistID  string
+}
+
 // Add inserts a queued task and nudges the scheduler.
 func (m *Manager) Add(ctx context.Context, opts AddOptions) (task.Task, error) {
+	if media.IsYouTubeURL(opts.URL) {
+		return task.Task{}, fmt.Errorf("%w: YouTube URLs require the media download flow (enable in Settings)", engine.ErrInvalidURL)
+	}
 	if err := validateHTTPURL(opts.URL); err != nil {
 		return task.Task{}, err
 	}
@@ -135,6 +157,54 @@ func (m *Manager) Add(ctx context.Context, opts AddOptions) (task.Task, error) {
 		m.mu.Lock()
 		m.auth[t.ID] = ephemeralAuth{Cookie: opts.Cookie, Referer: opts.Referer}
 		m.mu.Unlock()
+	}
+	m.notifyChanged(t.ID)
+	m.nudge()
+	return t, nil
+}
+
+// AddMedia enqueues a YouTube download (requires media.enabled at execute time).
+func (m *Manager) AddMedia(ctx context.Context, opts AddMediaOptions) (task.Task, error) {
+	pageURL, err := media.ValidateYouTubeURL(opts.WebpageURL)
+	if err != nil {
+		return task.Task{}, err
+	}
+	dir := filepath.Clean(strings.TrimSpace(opts.DestDir))
+	if dir == "" || dir == "." {
+		return task.Task{}, fmt.Errorf("%w: destination directory required", engine.ErrInvalidDestination)
+	}
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return task.Task{}, fmt.Errorf("%w: %v", engine.ErrInvalidDestination, err)
+	}
+	name := strings.TrimSpace(opts.DisplayName)
+	if name == "" {
+		name = "youtube-video"
+	}
+	// Provisional path; executeMedia updates DestinationPath to the real file.
+	abs := filepath.Join(absDir, name+".mp4")
+
+	format := strings.TrimSpace(opts.FormatID)
+	if format == "" {
+		format = "best"
+	}
+
+	now := time.Now().UTC()
+	t := task.Task{
+		ID:              task.NewID(),
+		URL:             pageURL,
+		DisplayName:     name,
+		DestinationPath: abs,
+		State:           task.StateQueued,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		MediaSource:     "youtube",
+		MediaFormatID:   format,
+		MediaWebpageURL: pageURL,
+		MediaPlaylistID: strings.TrimSpace(opts.PlaylistID),
+	}
+	if err := m.store.InsertTask(ctx, t); err != nil {
+		return task.Task{}, err
 	}
 	m.notifyChanged(t.ID)
 	m.nudge()
@@ -400,6 +470,10 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 	}
 	m.notifyChanged(id)
 
+	if t.MediaSource == "youtube" {
+		return m.executeMedia(ctx, t, cfg)
+	}
+
 	forceRestart, err := m.handleResumeValidators(ctx, &t, cfg)
 	if err != nil {
 		return m.failTask(ctx, t, "resume_mismatch", err.Error())
@@ -481,6 +555,95 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 		return err
 	}
 	m.clearAuth(id)
+	m.notifyChanged(id)
+	return nil
+}
+
+func (m *Manager) executeMedia(ctx context.Context, t task.Task, cfg storage.Settings) error {
+	id := t.ID
+	if !cfg.MediaEnabled {
+		return m.failTask(ctx, t, "media_disabled", "enable YouTube downloads in Settings")
+	}
+
+	m.mu.Lock()
+	dataDir := m.dataDir
+	m.mu.Unlock()
+	tools := media.ResolveTools(dataDir, cfg.MediaYtDlpPath, cfg.MediaFFmpegPath)
+	if !tools.YtDlpReady() {
+		return m.failTask(ctx, t, "media_tools", "yt-dlp helper is missing; re-enable media in Settings to install")
+	}
+	formatSel := media.ResolveFormatSelector(t.MediaFormatID)
+	if strings.Contains(formatSel, "+") && !tools.FFmpegReady() {
+		return m.failTask(ctx, t, "media_tools", "ffmpeg is required to merge video+audio; open Settings → Retry helper install")
+	}
+
+	t.State = task.StateDownloading
+	t.UpdatedAt = time.Now().UTC()
+	if err := m.store.UpdateTask(ctx, t); err != nil {
+		return err
+	}
+	m.notifyChanged(id)
+
+	destDir := filepath.Dir(t.DestinationPath)
+	final, err := media.Download(ctx, media.DownloadOptions{
+		WebpageURL: t.MediaWebpageURL,
+		FormatID:   t.MediaFormatID,
+		DestDir:    destDir,
+		OutputName: "",
+		Tools:      tools,
+		OnProgress: func(ev media.ProgressEvent) {
+			cur, gerr := m.store.GetTask(context.Background(), id)
+			if gerr != nil {
+				return
+			}
+			cur.DownloadedBytes = ev.Downloaded
+			if ev.Total > 0 {
+				total := ev.Total
+				cur.TotalBytes = &total
+			}
+			cur.UpdatedAt = time.Now().UTC()
+			_ = m.store.UpdateTask(context.Background(), cur)
+			m.notifyProgress(id, engine.ProgressEvent{
+				Downloaded:  ev.Downloaded,
+				Total:       ev.Total,
+				BytesPerSec: ev.BytesPerSec,
+			})
+		},
+	})
+	if err != nil {
+		if errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "cancelled") {
+			cur, gerr := m.store.GetTask(context.Background(), id)
+			if gerr == nil && task.IsActive(cur.State) && cur.State != task.StateCancelled {
+				cur.State = task.StatePaused
+				cur.UpdatedAt = time.Now().UTC()
+				_ = m.store.UpdateTask(context.Background(), cur)
+				m.notifyChanged(id)
+			}
+			return err
+		}
+		return m.failTask(ctx, t, "media_failed", err.Error())
+	}
+
+	st, _ := os.Stat(final)
+	var size int64
+	if st != nil {
+		size = st.Size()
+	}
+	t, err = m.store.GetTask(ctx, id)
+	if err != nil {
+		return err
+	}
+	t.State = task.StateCompleted
+	t.DestinationPath = final
+	t.DisplayName = filepath.Base(final)
+	t.DownloadedBytes = size
+	t.TotalBytes = &size
+	t.ErrorCode = ""
+	t.ErrorMessage = ""
+	t.UpdatedAt = time.Now().UTC()
+	if err := m.store.UpdateTask(ctx, t); err != nil {
+		return err
+	}
 	m.notifyChanged(id)
 	return nil
 }

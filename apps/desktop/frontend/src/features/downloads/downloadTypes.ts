@@ -47,6 +47,10 @@ export interface DecisionRequiredDTO {
   kind: string;
 }
 
+export interface MediaPickRequiredDTO {
+  url: string;
+}
+
 export interface SettingsDTO {
   downloadDirectory: string;
   maxActiveDownloads: number;
@@ -61,6 +65,36 @@ export interface SettingsDTO {
   browserHostMessage: string;
   closeToTray: boolean;
   launchAtLogin: boolean;
+  mediaEnabled: boolean;
+  mediaYtdlpPath: string;
+  mediaFfmpegPath: string;
+  mediaToolsReady: boolean;
+  mediaToolsMessage: string;
+}
+
+export interface MediaFormatDTO {
+  id: string;
+  ext: string;
+  resolution: string;
+  note: string;
+  isAudio: boolean;
+  videoOnly: boolean;
+  height: number;
+}
+
+export interface MediaPlaylistEntryDTO {
+  id: string;
+  title: string;
+  url: string;
+}
+
+export interface MediaProbeDTO {
+  kind: string;
+  id: string;
+  title: string;
+  webpageUrl: string;
+  formats: MediaFormatDTO[];
+  entries: MediaPlaylistEntryDTO[];
 }
 
 export type FilterTab =

@@ -2,6 +2,7 @@
 
 Phase 2 ships the initial SQLite schema in `internal/storage/migrations/001_init.sql`.
 Phase 3 adds `internal/storage/migrations/002_segments.sql` for multi-connection downloads.
+Phase 10 adds `internal/storage/migrations/003_media.sql` for YouTube/media task metadata.
 
 ## DownloadTask
 
@@ -18,6 +19,10 @@ Phase 3 adds `internal/storage/migrations/002_segments.sql` for multi-connection
 - `error_code`: nullable stable code.
 - `error_message`: nullable sanitized user-facing message.
 - `retry_count`: integer.
+- `media_source`: empty for http(s); `youtube` for media tasks.
+- `media_format_id`: yt-dlp format id (`best`, `ba`, or concrete id).
+- `media_webpage_url`: canonical watch URL.
+- `media_playlist_id`: optional parent playlist/channel id when enqueued from a list.
 
 ## DownloadSegment
 
@@ -49,5 +54,8 @@ Constraints:
 - `ui.launch_at_login` (OS autostart; default false — desktop registers Wails Autostart with `--hidden`)
 - `browser.integration_enabled` (opt-in native messaging; default false)
 - `browser.chrome_extension_id` (Chrome/Edge host `allowed_origins`)
+- `media.enabled` (YouTube via yt-dlp; default false)
+- `media.ytdlp_path` (optional override; else managed `tools/` or PATH)
+- `media.ffmpeg_path` (optional override)
 
 Do not store secrets in this table.

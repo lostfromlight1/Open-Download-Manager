@@ -2,6 +2,7 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const {
   shouldInterceptDownload,
+  isYouTubePageURL,
   downloadBasename,
   buildCookieHeader,
 } = require("./intercept.js");
@@ -58,6 +59,36 @@ describe("shouldInterceptDownload", () => {
   it("rejects missing or invalid urls", () => {
     assert.equal(shouldInterceptDownload(null), false);
     assert.equal(shouldInterceptDownload({ url: "not a url" }), false);
+  });
+
+  it("skips YouTube watch pages and googlevideo CDN", () => {
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://www.youtube.com/watch?v=abc",
+        mime: "application/octet-stream",
+      }),
+      false,
+    );
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://www.youtube.com/downloads",
+      }),
+      false,
+    );
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://rr1---sn-abc.googlevideo.com/videoplayback?id=1",
+      }),
+      false,
+    );
+  });
+});
+
+describe("isYouTubePageURL", () => {
+  it("detects watch and short links", () => {
+    assert.equal(isYouTubePageURL("https://www.youtube.com/watch?v=abc"), true);
+    assert.equal(isYouTubePageURL("https://youtu.be/abc"), true);
+    assert.equal(isYouTubePageURL("https://example.com/a.mp4"), false);
   });
 });
 

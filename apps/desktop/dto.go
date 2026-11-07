@@ -48,6 +48,48 @@ type SettingsDTO struct {
 	BrowserHostMessage        string `json:"browserHostMessage"`    // install/uninstall result text
 	CloseToTray               bool   `json:"closeToTray"`           // hide to tray on window close
 	LaunchAtLogin             bool   `json:"launchAtLogin"`         // OS autostart (desktop)
+	MediaEnabled              bool   `json:"mediaEnabled"`
+	MediaYtDlpPath            string `json:"mediaYtdlpPath"`
+	MediaFFmpegPath           string `json:"mediaFfmpegPath"`
+	MediaToolsReady           bool   `json:"mediaToolsReady"`   // status only
+	MediaToolsMessage         string `json:"mediaToolsMessage"` // status only
+}
+
+// MediaFormatDTO is one selectable yt-dlp format.
+type MediaFormatDTO struct {
+	ID         string `json:"id"`
+	Ext        string `json:"ext"`
+	Resolution string `json:"resolution"`
+	Note       string `json:"note"`
+	IsAudio    bool   `json:"isAudio"`
+	VideoOnly  bool   `json:"videoOnly"`
+	Height     int    `json:"height"`
+}
+
+// MediaPlaylistEntryDTO is one playlist/channel entry.
+type MediaPlaylistEntryDTO struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
+// MediaProbeDTO is the result of probing a YouTube URL.
+type MediaProbeDTO struct {
+	Kind    string                  `json:"kind"`
+	ID      string                  `json:"id"`
+	Title   string                  `json:"title"`
+	Webpage string                  `json:"webpageUrl"`
+	Formats []MediaFormatDTO        `json:"formats"`
+	Entries []MediaPlaylistEntryDTO `json:"entries"`
+}
+
+// AddMediaRequest enqueues one YouTube video after the user picked a format.
+type AddMediaRequest struct {
+	WebpageURL  string `json:"webpageUrl"`
+	FormatID    string `json:"formatId"`
+	DisplayName string `json:"displayName"`
+	DestDir     string `json:"destDir"`
+	PlaylistID  string `json:"playlistId"`
 }
 
 // ProgressEventDTO is emitted on odm:download-progress.
@@ -110,6 +152,9 @@ func settingsToDTO(s storage.Settings) SettingsDTO {
 		ChromeExtensionID:         s.ChromeExtensionID,
 		CloseToTray:               s.CloseToTray,
 		LaunchAtLogin:             s.LaunchAtLogin,
+		MediaEnabled:              s.MediaEnabled,
+		MediaYtDlpPath:            s.MediaYtDlpPath,
+		MediaFFmpegPath:           s.MediaFFmpegPath,
 	}
 }
 
@@ -125,6 +170,9 @@ func settingsFromDTO(d SettingsDTO) (storage.Settings, error) {
 	cfg.ChromeExtensionID = strings.TrimSpace(d.ChromeExtensionID)
 	cfg.CloseToTray = d.CloseToTray
 	cfg.LaunchAtLogin = d.LaunchAtLogin
+	cfg.MediaEnabled = d.MediaEnabled
+	cfg.MediaYtDlpPath = strings.TrimSpace(d.MediaYtDlpPath)
+	cfg.MediaFFmpegPath = strings.TrimSpace(d.MediaFFmpegPath)
 
 	switch netx.ProxyMode(d.ProxyMode) {
 	case netx.ProxySystem, "":

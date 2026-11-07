@@ -1,5 +1,6 @@
 import type {
   DownloadDTO,
+  MediaProbeDTO,
   SettingsDTO,
 } from "../features/downloads/downloadTypes";
 
@@ -23,6 +24,15 @@ export interface DesktopApi {
   revealDownload(id: string): Promise<void>;
   downloadsAvailable(): Promise<boolean>;
   statusMessage(): Promise<string>;
+  isYouTubeURL(url: string): Promise<boolean>;
+  probeMediaURL(url: string): Promise<MediaProbeDTO>;
+  addMediaDownload(req: {
+    webpageUrl: string;
+    formatId: string;
+    displayName: string;
+    destDir: string;
+    playlistId: string;
+  }): Promise<DownloadDTO>;
 }
 
 let api: DesktopApi | null = null;
@@ -54,6 +64,19 @@ async function loadBindings(): Promise<DesktopApi> {
     revealDownload: (id) => downloads.RevealDownload(id).then(() => undefined),
     downloadsAvailable: () => shell.DownloadsAvailable(),
     statusMessage: () => shell.StatusMessage(),
+    isYouTubeURL: (url) => downloads.IsYouTubeURL(url),
+    probeMediaURL: async (url) => {
+      const probe = await downloads.ProbeMediaURL(url);
+      return {
+        kind: probe.kind,
+        id: probe.id,
+        title: probe.title,
+        webpageUrl: probe.webpageUrl,
+        formats: probe.formats ?? [],
+        entries: probe.entries ?? [],
+      };
+    },
+    addMediaDownload: (req) => downloads.AddMediaDownload(req),
   };
 }
 

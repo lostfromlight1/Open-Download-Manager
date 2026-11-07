@@ -22,10 +22,20 @@
         Capture http(s) link clicks (optional)
       </label>
       <p class="hint">
+        Click capture never runs on YouTube pages (so videos stay clickable). Use
+        the context menu to download YouTube with format choice.
+      </p>
+      <p class="hint">
         Enable browser integration in the ODM desktop Settings and set a
         download folder first. Cookie handoff is one-shot and not stored by
         ODM; after a restart you may need to intercept again. Chrome/Edge need
         your extension ID pasted in Settings.
+      </p>
+      <p class="hint">
+        YouTube: right-click a video/link →
+        <strong>Download YouTube with ODM (choose format)…</strong>
+        (enable YouTube downloads in ODM Settings). Intercept does not steal
+        YouTube page clicks.
       </p>
       <p id="lastError" class="error" hidden></p>
       <button type="button" id="refresh">Refresh status</button>

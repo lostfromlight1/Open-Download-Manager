@@ -20,6 +20,11 @@ function shouldInterceptDownload(item) {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     return false;
   }
+  // YouTube / googlevideo must use the media (yt-dlp) flow — never steal
+  // page navigations named "watch" / "downloads" or raw CDN stream scraps.
+  if (isYouTubeRelatedHost(url.hostname)) {
+    return false;
+  }
   const mime = String(item.mime || "")
     .toLowerCase()
     .trim();
@@ -28,6 +33,49 @@ function shouldInterceptDownload(item) {
     return false;
   }
   return true;
+}
+
+/** Hosts that belong to YouTube media (watch pages + video CDN). */
+function isYouTubeRelatedHost(hostname) {
+  const host = String(hostname || "")
+    .toLowerCase()
+    .replace(/\.$/, "");
+  if (
+    host === "youtu.be" ||
+    host === "youtube.com" ||
+    host === "www.youtube.com" ||
+    host === "m.youtube.com" ||
+    host === "music.youtube.com" ||
+    host === "youtube-nocookie.com" ||
+    host === "www.youtube-nocookie.com"
+  ) {
+    return true;
+  }
+  if (host.endsWith(".youtube.com") || host.endsWith(".googlevideo.com")) {
+    return true;
+  }
+  return host === "googlevideo.com";
+}
+
+/** True when a link should use ODM's YouTube format picker (not plain enqueue). */
+function isYouTubePageURL(raw) {
+  try {
+    const u = new URL(String(raw || "").trim());
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      return false;
+    }
+    const host = u.hostname.toLowerCase();
+    return (
+      host === "youtu.be" ||
+      host === "youtube.com" ||
+      host === "www.youtube.com" ||
+      host === "m.youtube.com" ||
+      host === "music.youtube.com" ||
+      host.endsWith(".youtube.com")
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Last path segment of a browser download filename (OS path or bare name). */
@@ -70,6 +118,8 @@ function buildCookieHeader(cookies) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     shouldInterceptDownload,
+    isYouTubeRelatedHost,
+    isYouTubePageURL,
     downloadBasename,
     buildCookieHeader,
   };

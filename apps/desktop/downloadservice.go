@@ -12,6 +12,7 @@ import (
 	"github.com/lostfromlight1/Open-Download-Manager/internal/browserhost"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/engine"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/manager"
+	"github.com/lostfromlight1/Open-Download-Manager/internal/media"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/storage"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/task"
 )
@@ -20,19 +21,23 @@ import (
 //
 // It must not implement transfer logic. React calls these methods via bindings.
 type DownloadService struct {
-	mu            sync.Mutex
-	mgr           *manager.Manager
-	store         *storage.Store
-	decisions     *InteractiveDecisions
-	sink          EventSink
-	tray          *trayController
-	speeds        map[string]float64 // taskID → latest bytes/sec for tray tooltip
-	dataDir       string
-	ready         bool
-	initErr       string
-	knownTaskIDs  map[string]struct{}
-	reconcileStop chan struct{}
-	reconcileOnce sync.Once
+	mu             sync.Mutex
+	mgr            *manager.Manager
+	store          *storage.Store
+	decisions      *InteractiveDecisions
+	sink           EventSink
+	tray           *trayController
+	speeds         map[string]float64 // taskID → latest bytes/sec for tray tooltip
+	dataDir        string
+	ready          bool
+	initErr        string
+	knownTaskIDs   map[string]struct{}
+	reconcileStop  chan struct{}
+	reconcileOnce  sync.Once
+	needUI         func()
+	mediaToolsBusy bool
+	mediaToolsErr  string
+	mediaToolsMsg  string
 }
 
 // NewDownloadService constructs an unready service (tests / late bind).
@@ -48,6 +53,13 @@ func (s *DownloadService) setTrayController(tray *trayController) {
 	if tray != nil {
 		tray.setActions(s)
 	}
+}
+
+// setNeedUI registers a callback to bring the main window forward (media pick, etc.).
+func (s *DownloadService) setNeedUI(fn func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.needUI = fn
 }
 
 // PauseAllActive pauses queued/active downloads (tray menu).
@@ -95,6 +107,7 @@ func (s *DownloadService) bind(mgr *manager.Manager, store *storage.Store, decis
 	s.ready = mgr != nil && store != nil
 	s.initErr = ""
 	if s.ready {
+		mgr.SetDataDir(dataDir)
 		mgr.SetListener(managerListener{svc: s})
 		s.knownTaskIDs = map[string]struct{}{}
 		s.startReconcileLocked()
@@ -251,7 +264,170 @@ func (s *DownloadService) GetSettings() (SettingsDTO, error) {
 	}
 	dto := settingsToDTO(cfg)
 	dto.BrowserHostRegistered = browserhost.IsInstalled()
+	if cfg.MediaEnabled && media.NeedsEnsure(s.dataDir, cfg.MediaYtDlpPath, cfg.MediaFFmpegPath) {
+		s.startMediaToolsEnsure()
+	}
+	s.fillMediaToolsStatus(&dto, cfg)
 	return dto, nil
+}
+
+func (s *DownloadService) fillMediaToolsStatus(dto *SettingsDTO, cfg storage.Settings) {
+	tools := media.ResolveTools(s.dataDir, cfg.MediaYtDlpPath, cfg.MediaFFmpegPath)
+	needs := media.NeedsEnsure(s.dataDir, cfg.MediaYtDlpPath, cfg.MediaFFmpegPath)
+	dto.MediaToolsReady = tools.YtDlpReady() && tools.FFmpegReady() && !needs
+
+	s.mu.Lock()
+	busy := s.mediaToolsBusy
+	ensureErr := s.mediaToolsErr
+	ensureMsg := s.mediaToolsMsg
+	s.mu.Unlock()
+
+	switch {
+	case !cfg.MediaEnabled:
+		dto.MediaToolsMessage = "YouTube downloads are disabled."
+	case busy:
+		if ensureMsg != "" {
+			dto.MediaToolsMessage = ensureMsg
+		} else {
+			dto.MediaToolsMessage = "Downloading helpers (ffmpeg is large; leave ODM open)…"
+		}
+	case ensureErr != "" && needs:
+		dto.MediaToolsMessage = "Helper install issue: " + ensureErr + " — click Retry install."
+	case needs && tools.YtDlpReady():
+		dto.MediaToolsMessage = "yt-dlp update available (pin " + media.PinnedYtDlpVersion + "). Click Retry helper install."
+	case tools.YtDlpReady() && tools.FFmpegReady():
+		dto.MediaToolsMessage = "yt-dlp and ffmpeg are ready (" + media.PinnedYtDlpVersion + ")."
+	case tools.YtDlpReady():
+		dto.MediaToolsMessage = "yt-dlp ready; ffmpeg missing (some formats need it). Save again or Retry install — ffmpeg is ~190MB and resumes if interrupted."
+	default:
+		dto.MediaToolsMessage = "Helpers not installed yet. Save with media enabled to download them."
+	}
+}
+
+// startMediaToolsEnsure downloads yt-dlp/ffmpeg in the background so Settings
+// Save is not blocked on the large ffmpeg zip (which was leaving .part files).
+func (s *DownloadService) startMediaToolsEnsure() {
+	s.mu.Lock()
+	if !s.ready || s.dataDir == "" || s.mediaToolsBusy {
+		s.mu.Unlock()
+		return
+	}
+	s.mediaToolsBusy = true
+	s.mediaToolsErr = ""
+	s.mediaToolsMsg = "Downloading helpers…"
+	dataDir := s.dataDir
+	s.mu.Unlock()
+
+	go func() {
+		_, err := media.EnsureTools(context.Background(), dataDir, nil, func(msg string) {
+			s.mu.Lock()
+			s.mediaToolsMsg = msg
+			s.mu.Unlock()
+		})
+		s.mu.Lock()
+		s.mediaToolsBusy = false
+		s.mediaToolsMsg = ""
+		if err != nil {
+			s.mediaToolsErr = err.Error()
+		} else {
+			s.mediaToolsErr = ""
+		}
+		s.mu.Unlock()
+	}()
+}
+
+// EnsureMediaTools starts (or reports) managed yt-dlp/ffmpeg install.
+func (s *DownloadService) EnsureMediaTools() (SettingsDTO, error) {
+	if err := s.requireReady(); err != nil {
+		return SettingsDTO{}, err
+	}
+	cfg, err := s.mgr.Settings(context.Background())
+	if err != nil {
+		return SettingsDTO{}, err
+	}
+	if !cfg.MediaEnabled {
+		return SettingsDTO{}, fmt.Errorf("enable YouTube downloads first")
+	}
+	s.startMediaToolsEnsure()
+	dto := settingsToDTO(cfg)
+	s.fillMediaToolsStatus(&dto, cfg)
+	dto.BrowserHostRegistered = browserhost.IsInstalled()
+	return dto, nil
+}
+
+// ProbeMediaURL runs yt-dlp -J for a YouTube URL (requires media enabled + tools).
+func (s *DownloadService) ProbeMediaURL(rawURL string) (MediaProbeDTO, error) {
+	if err := s.requireReady(); err != nil {
+		return MediaProbeDTO{}, err
+	}
+	cfg, err := s.mgr.Settings(context.Background())
+	if err != nil {
+		return MediaProbeDTO{}, err
+	}
+	if !cfg.MediaEnabled {
+		return MediaProbeDTO{}, fmt.Errorf("enable YouTube downloads in Settings first")
+	}
+	tools := media.ResolveTools(s.dataDir, cfg.MediaYtDlpPath, cfg.MediaFFmpegPath)
+	if !tools.YtDlpReady() {
+		return MediaProbeDTO{}, fmt.Errorf("yt-dlp is not installed; save Settings with media enabled")
+	}
+	res, err := media.Probe(context.Background(), tools, rawURL)
+	if err != nil {
+		return MediaProbeDTO{}, err
+	}
+	out := MediaProbeDTO{
+		Kind:    res.Kind,
+		ID:      res.ID,
+		Title:   res.Title,
+		Webpage: res.Webpage,
+	}
+	for _, f := range res.Formats {
+		out.Formats = append(out.Formats, MediaFormatDTO{
+			ID: f.ID, Ext: f.Ext, Resolution: f.Resolution, Note: f.Note,
+			IsAudio: f.IsAudio, VideoOnly: f.VideoOnly, Height: f.Height,
+		})
+	}
+	for _, e := range res.Entries {
+		out.Entries = append(out.Entries, MediaPlaylistEntryDTO{ID: e.ID, Title: e.Title, URL: e.URL})
+	}
+	return out, nil
+}
+
+// AddMediaDownload enqueues one YouTube video after format selection.
+func (s *DownloadService) AddMediaDownload(req AddMediaRequest) (DownloadDTO, error) {
+	if err := s.requireReady(); err != nil {
+		return DownloadDTO{}, err
+	}
+	cfg, err := s.mgr.Settings(context.Background())
+	if err != nil {
+		return DownloadDTO{}, err
+	}
+	if !cfg.MediaEnabled {
+		return DownloadDTO{}, fmt.Errorf("enable YouTube downloads in Settings first")
+	}
+	dir := strings.TrimSpace(req.DestDir)
+	if dir == "" {
+		dir = strings.TrimSpace(cfg.DownloadDirectory)
+	}
+	if dir == "" {
+		return DownloadDTO{}, fmt.Errorf("set a default download folder in Settings")
+	}
+	t, err := s.mgr.AddMedia(context.Background(), manager.AddMediaOptions{
+		WebpageURL:  req.WebpageURL,
+		FormatID:    req.FormatID,
+		DestDir:     dir,
+		DisplayName: req.DisplayName,
+		PlaylistID:  req.PlaylistID,
+	})
+	if err != nil {
+		return DownloadDTO{}, err
+	}
+	return taskToDTO(t), nil
+}
+
+// IsYouTubeURL reports whether a URL should use the media probe flow.
+func (s *DownloadService) IsYouTubeURL(rawURL string) bool {
+	return media.IsYouTubeURL(rawURL)
 }
 
 // UpdateSettings validates and persists settings.
@@ -277,11 +453,20 @@ func (s *DownloadService) UpdateSettings(dto SettingsDTO) (SettingsDTO, error) {
 	if cfg.BrowserIntegrationEnabled && strings.TrimSpace(cfg.DownloadDirectory) == "" {
 		return SettingsDTO{}, fmt.Errorf("set a default download folder before enabling browser integration")
 	}
+	if cfg.MediaEnabled && strings.TrimSpace(cfg.DownloadDirectory) == "" {
+		return SettingsDTO{}, fmt.Errorf("set a default download folder before enabling YouTube downloads")
+	}
 	if err := s.mgr.SaveSettings(context.Background(), cfg); err != nil {
 		return SettingsDTO{}, err
 	}
 
 	out := settingsToDTO(cfg)
+	if cfg.MediaEnabled {
+		// ffmpeg zip is large; install asynchronously and resume .part files.
+		s.startMediaToolsEnsure()
+	}
+	s.fillMediaToolsStatus(&out, cfg)
+
 	wasEnabled := existing.BrowserIntegrationEnabled
 	switch {
 	case cfg.BrowserIntegrationEnabled:
@@ -505,12 +690,14 @@ func (s *DownloadService) reconcileLoop(stop <-chan struct{}) {
 func (s *DownloadService) reconcileOnceTick() {
 	s.mu.Lock()
 	mgr := s.mgr
+	store := s.store
 	sink := s.sink
 	ready := s.ready
 	s.mu.Unlock()
 	if !ready || mgr == nil || sink == nil {
 		return
 	}
+	s.claimPendingMediaPick(store, sink)
 	tasks, err := mgr.List(context.Background())
 	if err != nil {
 		return
@@ -553,4 +740,27 @@ func (s *DownloadService) reconcileOnceTick() {
 	for _, id := range removed {
 		sink.Emit(EventDownloadChanged, ChangedEventDTO{TaskID: id, Download: nil})
 	}
+}
+
+// claimPendingMediaPick reads a one-shot YouTube URL left by odm-nmhost and
+// asks the UI to open the format picker (shows the window if hidden).
+func (s *DownloadService) claimPendingMediaPick(store *storage.Store, sink EventSink) {
+	if store == nil || sink == nil {
+		return
+	}
+	raw, err := store.GetSetting(context.Background(), storage.SettingMediaPendingPickURL)
+	if err != nil || strings.TrimSpace(raw) == "" {
+		return
+	}
+	url := strings.TrimSpace(raw)
+	_ = store.SetSetting(context.Background(), storage.SettingMediaPendingPickURL, "")
+
+	s.mu.Lock()
+	needUI := s.needUI
+	s.mu.Unlock()
+
+	if needUI != nil {
+		needUI()
+	}
+	sink.Emit(EventMediaPickRequired, MediaPickRequiredDTO{URL: url})
 }

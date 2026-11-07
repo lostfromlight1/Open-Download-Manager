@@ -110,6 +110,35 @@ func TestDownloadServiceListAddSettings(t *testing.T) {
 	}
 }
 
+func TestDownloadServiceMediaGates(t *testing.T) {
+	svc, _ := setupService(t)
+	if !svc.IsYouTubeURL("https://www.youtube.com/watch?v=dQw4w9WgXcQ") {
+		t.Fatal("expected youtube url")
+	}
+	if svc.IsYouTubeURL("https://example.com/a.mp4") {
+		t.Fatal("expected non-youtube")
+	}
+	_, err := svc.AddDownload(AddDownloadRequest{
+		URL:         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		Destination: filepath.Join(t.TempDir(), "x.mp4"),
+	})
+	if err == nil {
+		t.Fatal("expected AddDownload to reject YouTube URL")
+	}
+	_, err = svc.ProbeMediaURL("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+	if err == nil {
+		t.Fatal("expected probe to fail when media disabled")
+	}
+	_, err = svc.AddMediaDownload(AddMediaRequest{
+		WebpageURL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		FormatID:   "best",
+		DestDir:    t.TempDir(),
+	})
+	if err == nil {
+		t.Fatal("expected AddMediaDownload to fail when media disabled")
+	}
+}
+
 func TestDownloadServiceCancelKeep(t *testing.T) {
 	svc, sink := setupService(t)
 	body := []byte("cancel-me-please-long-enough")

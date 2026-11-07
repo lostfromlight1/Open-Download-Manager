@@ -33,6 +33,10 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 		ETag:            `"etag-1"`,
 		CreatedAt:       now,
 		UpdatedAt:       now,
+		MediaSource:     "youtube",
+		MediaFormatID:   "best",
+		MediaWebpageURL: "https://www.youtube.com/watch?v=abc",
+		MediaPlaylistID: "PLx",
 	}
 	if err := store.InsertTask(ctx, in); err != nil {
 		t.Fatal(err)
@@ -44,6 +48,9 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	if got.URL != in.URL || got.DownloadedBytes != 10 || got.TotalBytes == nil || *got.TotalBytes != 100 {
 		t.Fatalf("round-trip mismatch: %#v", got)
 	}
+	if got.MediaSource != "youtube" || got.MediaFormatID != "best" || got.MediaPlaylistID != "PLx" {
+		t.Fatalf("media columns mismatch: %#v", got)
+	}
 
 	cfg := storage.DefaultSettings()
 	cfg.ProxyMode = netx.ProxyOff
@@ -52,6 +59,9 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	cfg.ChromeExtensionID = "abcdefghijklmnopqrstuvwxyzabcdef"
 	cfg.CloseToTray = false
 	cfg.LaunchAtLogin = true
+	cfg.MediaEnabled = true
+	cfg.MediaYtDlpPath = "/custom/yt-dlp"
+	cfg.MediaFFmpegPath = "/custom/ffmpeg"
 	if err := store.SaveSettings(ctx, cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -70,6 +80,9 @@ func TestStoreRoundTripTaskAndSettings(t *testing.T) {
 	}
 	if !loaded.LaunchAtLogin {
 		t.Fatalf("launch_at_login want true: %#v", loaded)
+	}
+	if !loaded.MediaEnabled || loaded.MediaYtDlpPath != cfg.MediaYtDlpPath || loaded.MediaFFmpegPath != cfg.MediaFFmpegPath {
+		t.Fatalf("media settings mismatch: %#v", loaded)
 	}
 
 	segs := []storage.Segment{

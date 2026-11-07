@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/lostfromlight1/Open-Download-Manager/internal/manager"
+	"github.com/lostfromlight1/Open-Download-Manager/internal/media"
 	"github.com/lostfromlight1/Open-Download-Manager/internal/storage"
 )
 
@@ -31,6 +32,8 @@ func (h *Handler) Handle(ctx context.Context, req Request) Response {
 		return Response{OK: true, Enabled: cfg.BrowserIntegrationEnabled}
 	case "enqueue":
 		return h.enqueue(ctx, cfg, req)
+	case "media_pick":
+		return h.mediaPick(ctx, cfg, req)
 	default:
 		return errResponse("unsupported_action", req.Action)
 	}
@@ -46,6 +49,12 @@ func (h *Handler) enqueue(ctx context.Context, cfg storage.Settings, req Request
 	}
 
 	url := strings.TrimSpace(req.URL)
+	if media.IsYouTubeURL(url) {
+		return errResponse(
+			"youtube_use_media_pick",
+			"YouTube links need “Download YouTube with ODM (choose format)…” (or enable media and use media_pick)",
+		)
+	}
 	name := SanitizeFilename(req.Filename)
 	if name == "" {
 		name = FilenameFromURL(url)
@@ -63,6 +72,28 @@ func (h *Handler) enqueue(ctx context.Context, cfg storage.Settings, req Request
 		return errResponse("enqueue_failed", err.Error())
 	}
 	return Response{OK: true, TaskID: t.ID, Enabled: true}
+}
+
+// mediaPick stores a one-shot YouTube URL for the desktop UI format picker.
+func (h *Handler) mediaPick(ctx context.Context, cfg storage.Settings, req Request) Response {
+	if !cfg.BrowserIntegrationEnabled {
+		return errResponse("disabled", "browser integration is disabled in ODM settings")
+	}
+	if !cfg.MediaEnabled {
+		return errResponse("media_disabled", "enable YouTube downloads in ODM Settings first")
+	}
+	dir := strings.TrimSpace(cfg.DownloadDirectory)
+	if dir == "" {
+		return errResponse("no_directory", "set a default download folder in ODM settings")
+	}
+	pageURL, err := media.ValidateYouTubeURL(req.URL)
+	if err != nil {
+		return errResponse("invalid_url", err.Error())
+	}
+	if err := h.Store.SetSetting(ctx, storage.SettingMediaPendingPickURL, pageURL); err != nil {
+		return errResponse("pending_failed", err.Error())
+	}
+	return Response{OK: true, Enabled: true}
 }
 
 // HandleRaw parses raw JSON then handles it.
