@@ -285,16 +285,18 @@ async function handleDownloadCreated(item) {
     return;
   }
 
-  // Prefer finalUrl after redirects; fall back to the original request URL.
+  // Prefer finalUrl after redirects for bytes; keep original item.url for naming.
   const url = String(item.finalUrl || item.url || "").trim();
-  const candidate = { ...item, url };
-  if (!shouldInterceptDownload(candidate)) {
+  if (!shouldInterceptDownload(item)) {
     return;
   }
 
   interceptInFlight.add(item.id);
   try {
-    const name = downloadBasename(item.filename || "");
+    const name =
+      typeof resolveDownloadFilename === "function"
+        ? resolveDownloadFilename(item)
+        : downloadBasename(item.filename || "");
     let cookie = "";
     const prefsAuth = await chrome.storage.local.get({ forwardCookies: false });
     if (prefsAuth.forwardCookies && chrome.cookies?.getAll) {

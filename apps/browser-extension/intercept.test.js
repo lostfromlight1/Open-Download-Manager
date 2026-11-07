@@ -4,6 +4,8 @@ const {
   shouldInterceptDownload,
   isYouTubePageURL,
   downloadBasename,
+  resolveDownloadFilename,
+  looksLikeOpaqueCDNName,
   buildCookieHeader,
 } = require("./intercept.js");
 
@@ -80,6 +82,60 @@ describe("shouldInterceptDownload", () => {
         url: "https://rr1---sn-abc.googlevideo.com/videoplayback?id=1",
       }),
       false,
+    );
+  });
+
+  it("skips GitHub repo/release HTML pages", () => {
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://github.com/lostfromlight1/Open-Download-Manager",
+      }),
+      false,
+    );
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://github.com/lostfromlight1/Open-Download-Manager/releases/tag/v1.0.0",
+      }),
+      false,
+    );
+  });
+
+  it("allows GitHub release asset and archive URLs", () => {
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://github.com/lostfromlight1/Open-Download-Manager/releases/download/v1.0.0/odm-amd64-installer.exe",
+        mime: "application/octet-stream",
+      }),
+      true,
+    );
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://github.com/lostfromlight1/Open-Download-Manager/archive/refs/tags/v1.0.0.zip",
+      }),
+      true,
+    );
+    assert.equal(
+      shouldInterceptDownload({
+        url: "https://github.com/o/r/releases/download/v1/a.exe",
+        finalUrl:
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1/03e81db1-5f46-4bc6-b88c-6c7ab3514425",
+      }),
+      true,
+    );
+  });
+});
+
+describe("resolveDownloadFilename", () => {
+  it("prefers release asset name over CDN UUID", () => {
+    assert.equal(looksLikeOpaqueCDNName("03e81db1-5f46-4bc6-b88c-6c7ab3514425"), true);
+    assert.equal(
+      resolveDownloadFilename({
+        filename: "C:\\Users\\a\\03e81db1-5f46-4bc6-b88c-6c7ab3514425",
+        url: "https://github.com/o/r/releases/download/v1.0.0/odm-amd64-installer.exe",
+        finalUrl:
+          "https://release-assets.githubusercontent.com/github-production-release-asset/1/03e81db1-5f46-4bc6-b88c-6c7ab3514425",
+      }),
+      "odm-amd64-installer.exe",
     );
   });
 });

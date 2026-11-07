@@ -572,6 +572,10 @@ func (m *Manager) execute(ctx context.Context, id string, cfg storage.Settings) 
 	m.notifyChanged(id)
 
 	t.State = task.StateCompleted
+	if result != nil && result.Destination != "" {
+		t.DestinationPath = result.Destination
+		t.DisplayName = filepath.Base(result.Destination)
+	}
 	t.DownloadedBytes = result.BytesWritten
 	total := result.BytesWritten
 	t.TotalBytes = &total

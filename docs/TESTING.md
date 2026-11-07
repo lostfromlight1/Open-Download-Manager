@@ -133,6 +133,7 @@ Before merging:
 6. Disable the popup toggle → normal browser downloads work again.
 7. With toggle on, confirm opening ordinary web pages still works (HTML MIME is not intercepted).
 8. Optional: with ODM integration disabled, intercept should leave the browser download running after enqueue failure.
+9. GitHub Releases: download `odm-amd64-installer.exe` with intercept on — task name must be the `.exe`, not a UUID; opening the release *page* must not create an “Open-Download-Manager” HTML task.
 
 ### Desktop layout
 

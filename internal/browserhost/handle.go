@@ -55,9 +55,9 @@ func (h *Handler) enqueue(ctx context.Context, cfg storage.Settings, req Request
 			"YouTube links need “Download YouTube with ODM (choose format)…” (or enable media and use media_pick)",
 		)
 	}
-	name := SanitizeFilename(req.Filename)
+	name := PreferFilename(SanitizeFilename(req.Filename), FilenameFromURL(url))
 	if name == "" {
-		name = FilenameFromURL(url)
+		name = "download.bin"
 	}
 	dest := filepath.Join(dir, name)
 

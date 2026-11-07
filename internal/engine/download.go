@@ -288,6 +288,20 @@ func attemptDownload(
 		}
 	}
 
+	// GitHub release CDNs use UUID path segments; prefer Content-Disposition.
+	if existing == 0 {
+		if cdName := FilenameFromContentDisposition(resp.Header.Get("Content-Disposition")); cdName != "" {
+			curBase := filepath.Base(dest)
+			if LooksLikeOpaqueCDNName(curBase) || curBase == "download.bin" {
+				newDest := filepath.Join(filepath.Dir(dest), cdName)
+				if newDest != dest {
+					dest = newDest
+					part = partPath(dest)
+				}
+			}
+		}
+	}
+
 	// Figure out expected final size when the server tells us.
 	expectedTotal := int64(0)
 	if resp.StatusCode == http.StatusOK {

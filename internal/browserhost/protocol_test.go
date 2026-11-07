@@ -49,6 +49,13 @@ func TestSanitizeFilename(t *testing.T) {
 	if FilenameFromURL("https://ex.com/path/file.zip?x=1") != "file.zip" {
 		t.Fatalf("url name: %q", FilenameFromURL("https://ex.com/path/file.zip?x=1"))
 	}
+	uuidURL := "https://release-assets.githubusercontent.com/github-production-release-asset/1/03e81db1-5f46-4bc6-b88c-6c7ab3514425"
+	if FilenameFromURL(uuidURL) != "download.bin" {
+		t.Fatalf("cdn uuid should fall back, got %q", FilenameFromURL(uuidURL))
+	}
+	if got := PreferFilename("03e81db1-5f46-4bc6-b88c-6c7ab3514425", "odm-amd64-installer.exe"); got != "odm-amd64-installer.exe" {
+		t.Fatalf("PreferFilename got %q", got)
+	}
 }
 
 func TestNativeMessageRoundTrip(t *testing.T) {
