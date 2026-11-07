@@ -22,14 +22,20 @@ Unicode true
 ## !define INFO_PROJECTNAME    "odm" # Default "odm"
 ## !define INFO_COMPANYNAME    "Open Download Manager contributors"
 ## !define INFO_PRODUCTNAME    "Open Download Manager"
-## !define INFO_PRODUCTVERSION "0.4.0"
+## !define INFO_PRODUCTVERSION "0.5.0"
 ## !define INFO_COPYRIGHT      "(c) 2026 Open Download Manager contributors"
 ###
 ## !define PRODUCT_EXECUTABLE  "Application.exe"      # Default "${INFO_PROJECTNAME}.exe"
 ## !define UNINST_KEY_NAME     "UninstKeyInRegistry"  # Default "${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
 ####
-## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
-## !define WAILS_INSTALL_SCOPE     "user"             # Default "machine" - set to "user" for per-user install ($LOCALAPPDATA) without UAC prompt
+## v1.0 prep: per-user install (no UAC). Override via makensis -DWAILS_INSTALL_SCOPE=machine
+## if a machine-wide install is required.
+!ifndef WAILS_INSTALL_SCOPE
+    !define WAILS_INSTALL_SCOPE "user"
+!endif
+!ifndef REQUEST_EXECUTION_LEVEL
+    !define REQUEST_EXECUTION_LEVEL "user"
+!endif
 ####
 ## Include the wails tools
 ####
@@ -56,6 +62,8 @@ ManifestDPIAware true
 # !define MUI_WELCOMEFINISHPAGE_BITMAP "resources\leftimage.bmp" #Include this to add a bitmap on the left side of the Welcome Page. Must be a size of 164x314
 !define MUI_FINISHPAGE_NOAUTOCLOSE # Wait on the INSTFILES page so the user can take a look into the details of the installation steps
 !define MUI_ABORTWARNING # This will warn the user if they exit from the installer.
+!define MUI_FINISHPAGE_RUN "$INSTDIR\${PRODUCT_EXECUTABLE}"
+!define MUI_FINISHPAGE_RUN_TEXT "Launch Open Download Manager"
 
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
@@ -67,7 +75,11 @@ ManifestDPIAware true
 
 !insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
 
-## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
+## Authenticode signing hooks (v1.0 final). Leave commented until WINDOWS_CERT_* /
+## signtool is available in CI. %1 is the path to the built binary.
+## Example once a cert is configured:
+##   !uninstfinalize 'signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f "%WINDOWS_CERT_FILE%" /p "%WINDOWS_CERT_PASSWORD%" "%1"'
+##   !finalize 'signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f "%WINDOWS_CERT_FILE%" /p "%WINDOWS_CERT_PASSWORD%" "%1"'
 #!uninstfinalize 'signtool --file "%1"'
 #!finalize 'signtool --file "%1"'
 

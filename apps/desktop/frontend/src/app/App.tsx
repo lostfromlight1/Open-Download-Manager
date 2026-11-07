@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { DownloadsPage } from "../features/downloads/DownloadsPage";
 import type { SettingsDTO } from "../features/downloads/downloadTypes";
 import { SettingsPage } from "../features/settings/SettingsPage";
+import { SetupWizard } from "../features/setup/SetupWizard";
+import { needsSetupWizard } from "../features/setup/needsSetupWizard";
 import { applyTheme, watchSystemTheme } from "../lib/theme";
 import { getDesktopApi } from "../services/desktopApi";
 
@@ -12,6 +14,7 @@ export function App() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [settings, setSettings] = useState<SettingsDTO | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -26,6 +29,7 @@ export function App() {
         const loaded = await api.getSettings();
         applyTheme(loaded.theme || "system");
         setSettings(loaded);
+        setShowSetup(needsSetupWizard(loaded));
         setReady(true);
       } catch (e) {
         setBootError(e instanceof Error ? e.message : String(e));
@@ -41,6 +45,9 @@ export function App() {
   function handleSettingsSaved(next: SettingsDTO) {
     applyTheme(next.theme || "system");
     setSettings(next);
+    if (!needsSetupWizard(next)) {
+      setShowSetup(false);
+    }
   }
 
   if (bootError) {
@@ -70,6 +77,18 @@ export function App() {
           Starting download manager…
         </p>
       </main>
+    );
+  }
+
+  if (showSetup) {
+    return (
+      <SetupWizard
+        initial={settings}
+        onComplete={(next) => {
+          handleSettingsSaved(next);
+          setShowSetup(false);
+        }}
+      />
     );
   }
 

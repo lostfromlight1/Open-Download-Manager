@@ -61,6 +61,7 @@ Platform support is a release commitment: do not advertise a platform as support
 - Phase 8: opt-in browser download interception + desktop UI fluid layout (~800px+).
 - Phase 9: cookie/Referer handoff (memory-only), launch-at-login, richer tray.
 - Phase 10: optional YouTube downloads (managed yt-dlp/ffmpeg; format + playlist select).
+- 0.5.0 (v1.0 prep): Windows per-user NSIS installer, first-run setup wizard, GitHub Release + SHA256 (signing hooks only).
 - Later: optional separate background service; Network Access / Tunneling track.
 - v1.0: signed/reproducible release process, platform QA, documentation, and security review.
 

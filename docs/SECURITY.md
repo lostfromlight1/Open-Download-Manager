@@ -42,11 +42,11 @@ The application downloads untrusted remote content and accepts URLs and commands
 - Provide a clear way to remove download history and task metadata.
 
 ### Updates and dependencies
-- Sign release artifacts and updates.
+- Sign release artifacts and updates (Authenticode hooks in NSIS + optional `WINDOWS_CERT_*` secrets on the Windows release workflow; required for final 1.0.0).
 - Review dependency licenses and known vulnerabilities.
 - Keep dependencies updated.
 - Protect release workflows and signing secrets.
-- Publish checksums for release artifacts.
+- Publish checksums for release artifacts (`SHA256SUMS.txt` on GitHub Releases).
 
 ## YouTube / media helpers (yt-dlp)
 

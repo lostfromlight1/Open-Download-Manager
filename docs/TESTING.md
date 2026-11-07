@@ -76,12 +76,21 @@ Before merging:
 
 ### Windows (required for local release verification)
 
-1. `CI=true wails3 build` then `wails3 task windows:package` (requires NSIS/`makensis` on `PATH`).
-2. Run `apps/desktop/bin/odm-amd64-installer.exe`, install, launch the app.
-3. Add a small HTTP download → pause → resume → complete.
-4. Open Settings: theme + destination Browse; toggle notify-on-complete if desired.
-5. From Details: Open file / Show in folder for a completed task.
-6. Uninstall via the installer entry. Note: SQLite data under `%AppData%\odm` is **not** removed by uninstall (by design for Phase 5).
+1. `CI=true wails3 build` then `wails3 task windows:package` (requires NSIS/`makensis` on `PATH`; default **per-user** `INSTALL_SCOPE=user`, no UAC).
+2. Run `apps/desktop/bin/odm-amd64-installer.exe`, install without admin, leave **Launch Open Download Manager** checked.
+3. First-run wizard: set download folder → optionally skip browser/YouTube → land on dashboard.
+4. Add a small HTTP download → pause → resume → complete.
+5. Open Settings: theme + destination Browse; toggle notify-on-complete if desired.
+6. From Details: Open file / Show in folder for a completed task.
+7. Uninstall via the installer entry. Note: SQLite data under `%AppData%\odm` is **not** removed by uninstall (by design for Phase 5).
+
+### End-user install smoke (0.5.0 / v1.0 prep)
+
+1. Install from a GitHub Release `odm-amd64-installer.exe` (or local NSIS build) without elevating.
+2. Confirm install path is under `%LOCALAPPDATA%\Programs\…`.
+3. Complete first-run folder step; confirm Add Download works afterward.
+4. Optional: enable browser + load unpacked extension; optional YouTube probe of one short URL.
+5. Compare installer SHA256 to `SHA256SUMS.txt` when installing from a Release.
 
 ### macOS / Linux (contributor optional; CI is the Phase 5 gate)
 

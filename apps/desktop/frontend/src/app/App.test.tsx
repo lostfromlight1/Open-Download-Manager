@@ -103,6 +103,39 @@ describe("App", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows setup wizard when download directory is empty", async () => {
+    setDesktopApi(
+      mockApi({
+        getSettings: async () => ({
+          downloadDirectory: "",
+          maxActiveDownloads: 2,
+          maxConnectionsPerDownload: 4,
+          proxyMode: "system",
+          proxyURL: "",
+          theme: "system",
+          notifyOnComplete: false,
+          browserIntegrationEnabled: false,
+          chromeExtensionId: "",
+          browserHostRegistered: false,
+          browserHostMessage: "",
+          closeToTray: true,
+          launchAtLogin: false,
+          mediaEnabled: false,
+          mediaYtdlpPath: "",
+          mediaFfmpegPath: "",
+          mediaToolsReady: false,
+          mediaToolsMessage: "",
+        }),
+      }),
+    );
+    render(<App />);
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Set up Open Download Manager" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("shows boot error when downloads unavailable", async () => {
     setDesktopApi(
       mockApi({

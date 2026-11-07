@@ -131,7 +131,7 @@ go run ./cmd/odm version
 Expected CLI output:
 
 ```text
-ODM — Open Download Manager 0.4.0
+ODM — Open Download Manager 0.5.0
 ```
 
 ---
@@ -215,7 +215,9 @@ go build -o bin/odm ./cmd/odm
 go build -o bin/odm-desktop ./apps/desktop
 ```
 
-### 5.5 Unsigned installers / packages (Phase 5)
+End users who only need the app should use a Release installer — see [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
+
+### 5.5 Unsigned installers / packages (Phase 5 / 0.5.0)
 
 All packages are **unsigned**. Code signing and macOS notarization are deferred to v1.0.
 
@@ -223,7 +225,7 @@ From `apps/desktop` with `CI=true`:
 
 | OS | Command | Artifact |
 |---|---|---|
-| Windows | `wails3 task windows:package` | `bin/odm-amd64-installer.exe` (NSIS) |
+| Windows | `wails3 task windows:package` (default `INSTALL_SCOPE=user`, no UAC) | `bin/odm-amd64-installer.exe` (NSIS) |
 | macOS | `wails3 task darwin:package` | `bin/odm.app` |
 | Linux | `wails3 task linux:create:deb` | `bin/odm_*.deb` |
 

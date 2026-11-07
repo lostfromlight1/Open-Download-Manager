@@ -231,6 +231,17 @@ Keep downloads alive in the **same** desktop process when the window is hidden (
 - Playlist/channel → selectable entries; only selected become tasks
 - Media disabled → clear Settings hint; http(s) engine unchanged
 
+## v1.0 prep (0.5.0) — Windows easy install / setup
+
+**Status:** implemented (Windows-first; Authenticode deferred to final 1.0.0).
+
+**Deliverables**
+
+- Per-user NSIS installer (no UAC), finish-page launch, signing placeholders
+- First-run setup wizard when `download.directory` is empty
+- `docs/GETTING_STARTED.md` for end users; Release workflow + SHA256
+- Version branding **0.5.0**; Authenticode deferred to final 1.0.0
+
 ## Phase N — Network Access / Tunneling track
 
 **After** reliable downloading and proxy support.

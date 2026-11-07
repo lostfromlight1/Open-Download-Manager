@@ -4,7 +4,7 @@
 name: "odm"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.4.0"
+version: "0.5.0"
 section: "net"
 priority: "optional"
 maintainer: "Open Download Manager contributors <noreply@opendownloadmanager.app>"

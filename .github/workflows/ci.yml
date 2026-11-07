@@ -163,7 +163,7 @@ jobs:
       - name: Package Windows NSIS installer
         if: runner.os == 'Windows'
         working-directory: apps/desktop
-        run: wails3 task windows:create:nsis:installer
+        run: wails3 task windows:create:nsis:installer INSTALL_SCOPE=user
 
       - name: Package macOS app bundle
         if: runner.os == 'macOS'
